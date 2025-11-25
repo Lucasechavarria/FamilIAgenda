@@ -3,10 +3,10 @@ import { CalendarEvent, Family, AIAnalysisResponse, AIEventProposal } from '../t
 
 // Configuración base de Axios
 const getBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}/api`;
-  }
-  return 'http://localhost:8000/api';
+  // En producción, usar la variable de entorno
+  // En desarrollo, usar localhost
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  return `${apiUrl}/api`;
 };
 
 const api = axios.create({
@@ -17,7 +17,7 @@ const api = axios.create({
 });
 
 // ID de familia hardcodeado por ahora para simplificar el MVP
-const CURRENT_FAMILY_ID = 1; 
+const CURRENT_FAMILY_ID = 1;
 
 export const calendarService = {
   /**
