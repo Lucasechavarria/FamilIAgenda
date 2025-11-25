@@ -1,0 +1,104 @@
+from typing import List, Optional
+from sqlmodel import Field, SQLModel, Relationship
+from datetime import datetime
+
+# Tabla intermedia para relación N:M entre User y Family
+class FamilyMember(SQLModel, table=True):
+    family_id: Optional[int] = Field(default=None, foreign_key="family.id", primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", primary_key=True)
+    role: str = Field(default="member")  # admin, moderator, member
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(unique=True, index=True)
+    full_name: str
+    hashed_password: str
+    avatar_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relaciones
+    families: List["Family"] = Relationship(back_populates="members", link_model=FamilyMember)
+    created_events: List["Event"] = Relationship(back_populates="owner")
+    notification_tokens: List["NotificationToken"] = Relationship(back_populates="user")
+    shared_events: List["EventShare"] = Relationship(back_populates="shared_with_user")
+
+class Family(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    invitation_code: str = Field(unique=True, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relaciones
+    members: List[User] = Relationship(back_populates="families", link_model=FamilyMember)
+    events: List["Event"] = Relationship(back_populates="family")
+
+class Event(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+    description: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    category: str = Field(default="general")  # home, school, work, health
+    priority: str = Field(default="normal")  # low, normal, high, critical
+    visibility: str = "family"  # 'private', 'family'
+    
+    # Recurrencia
+    is_recurring: bool = Field(default=False)
+    recurrence_pattern: Optional[str] = None
+    
+    # Notificaciones
+    notification_config: Optional[str] = Field(default='{"pre": [15], "post": false}')
+    last_notified_at: Optional[datetime] = None
+    
+    # Estado
+    status: str = Field(default="pending")
+    completed_at: Optional[datetime] = None
+    completed_by_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    
+    # Relaciones
+    owner_id: int = Field(foreign_key="user.id")
+    family_id: int = Field(foreign_key="family.id")
+    owner: User = Relationship(back_populates="created_events")
+    family: Family = Relationship(back_populates="events")
+    shared_with: List["EventShare"] = Relationship(back_populates="event")
+
+class EventShare(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_id: int = Field(foreign_key="event.id")
+    shared_with_user_id: int = Field(foreign_key="user.id")
+    can_edit: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Relaciones
+    event: Event = Relationship(back_populates="shared_with")
+    shared_with_user: User = Relationship(back_populates="shared_events")
+
+class NotificationToken(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    token: str = Field(unique=True)
+    device_type: str  # 'web', 'android', 'ios'
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Relaciones
+    user: User = Relationship(back_populates="notification_tokens")
+
+class Task(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None
+    priority: str = Field(default="normal")
+    status: str = Field(default="pending")
+    assigned_to_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    family_id: int = Field(foreign_key="family.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+
+class ChatMessage(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    family_id: int = Field(foreign_key="family.id")
+    user_id: int = Field(foreign_key="user.id")
+    message: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -1,0 +1,5 @@
+{
+  "name": "Smart Family Calendar",
+  "description": "A modern frontend interface for the Smart Family Calendar SaaS, designed to connect with a FastAPI/SQLModel backend. Features event management and AI schedule analysis.",
+  "requestFramePermissions": []
+}

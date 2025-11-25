@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calendario Familiar Inteligente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <script>
+      tailwind.config = {
+        darkMode: 'class', // Habilita el modo oscuro manual
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              // Paleta solicitada: Morado (Primary), Verde (Secondary), Rojo (Accent)
+              primary: {
+                50: '#f5f3ff', // purple-50
+                100: '#ede9fe', // purple-100
+                200: '#ddd6fe',
+                300: '#c4b5fd',
+                400: '#a78bfa',
+                500: '#8b5cf6', // purple-500
+                600: '#7c3aed', // purple-600
+                700: '#6d28d9', // purple-700
+                800: '#5b21b6',
+                900: '#4c1d95',
+                950: '#2e1065',
+              },
+              secondary: {
+                50: '#f0fdf4',
+                100: '#dcfce7',
+                400: '#4ade80',
+                500: '#22c55e', // green-500
+                600: '#16a34a', // green-600
+                700: '#15803d',
+                800: '#166534',
+                900: '#14532d',
+              },
+              accent: {
+                50: '#fef2f2',
+                100: '#fee2e2',
+                500: '#ef4444', // red-500
+                600: '#dc2626', // red-600
+                700: '#b91c1c',
+                900: '#7f1d1d',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body { font-family: 'Inter', sans-serif; }
+      /* Custom scrollbar for cleaner look */
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #f1f5f9; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+      /* Dark mode scrollbar */
+      .dark ::-webkit-scrollbar-track { background: #1e293b; }
+      .dark ::-webkit-scrollbar-thumb { background: #475569; }
+      .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "axios": "https://esm.sh/axios@1.7.9",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "@fullcalendar/interaction": "https://aistudiocdn.com/@fullcalendar/interaction@^6.1.19",
+    "@fullcalendar/timegrid": "https://aistudiocdn.com/@fullcalendar/timegrid@^6.1.19",
+    "@fullcalendar/daygrid": "https://aistudiocdn.com/@fullcalendar/daygrid@^6.1.19",
+    "@fullcalendar/react": "https://aistudiocdn.com/@fullcalendar/react@^6.1.19",
+    "@clerk/clerk-react": "https://esm.sh/@clerk/clerk-react@5.2.0",
+    "@fullcalendar/core/": "https://aistudiocdn.com/@fullcalendar/core@^6.1.19/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-gray-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

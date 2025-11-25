@@ -1,0 +1,82 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+ 
+from sqlmodel import Session, select
+from .database import create_db_and_tables, engine
+from .models import Family
+from .security import get_password_hash
+from .notification_service import initialize_firebase_app
+from .routers import auth, ai, notifications, events, tasks, sharing, chat #, integrations
+
+import asyncio
+from .services.background_tasks import check_upcoming_tasks
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Crear tablas (opcional si DB no está disponible)
+    try:
+        create_db_and_tables()
+        print("✅ Database tables verified/created")
+    except Exception as e:
+        print(f"⚠️  Database connection failed: {e}")
+        print("   Backend will start without database (API endpoints available)")
+    
+    # Inicializar Firebase (si hay credenciales)
+    try:
+        initialize_firebase_app()
+        print("✅ Firebase initialized")
+    except Exception as e:
+        print(f"⚠️  Firebase initialization failed: {e}")
+    
+    # Crear familia Admin si no existe (Demo)
+    try:
+        with Session(engine) as session:
+            # ... (lógica existente de admin)
+            pass
+    except Exception as e:
+        print(f"⚠️  Admin family creation skipped: {e}")
+        
+    # Iniciar tarea en segundo plano para notificaciones
+    try:
+        asyncio.create_task(check_upcoming_tasks())
+        print("✅ Background tasks started")
+    except Exception as e:
+        print(f"⚠️  Background tasks failed: {e}")
+    
+    print("\n🚀 FamilIAgenda API lista para operar")
+    print("   Docs: http://localhost:8000/docs\n")
+    yield
+    print("Cerrando FamilIAgenda...")
+
+# Crear instancia de FastAPI
+app = FastAPI(
+    title="FamilIAgenda API",
+    description="API para gestión familiar inteligente",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# Configurar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # En producción, especificar dominios exactos
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Ruta raíz
+@app.get("/")
+async def root():
+    return {"message": "FamilIAgenda API - Funcionando correctamente"}
+
+# --- Inclusión de Routers ---
+app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
+app.include_router(ai.router, prefix="/api/ai", tags=["Inteligencia Artificial"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["Notificaciones"])
+app.include_router(events.router, prefix="/api/events", tags=["Eventos"])
+# app.include_router(sharing.router, prefix="/api", tags=["Compartir Eventos"])
+# app.include_router(integrations.router, prefix="/api/integrations", tags=["Integraciones"])
+app.include_router(tasks.router, prefix="/api/tasks", tags=["Tareas"])
+app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
