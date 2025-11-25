@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-const API_URL = '/api/auth';
+const getApiUrl = () => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    return `${baseUrl}/api/auth`;
+};
+
+const API_URL = getApiUrl();
 
 export interface User {
     id: string; // El backend devuelve 'sub' como string en el token, pero aquí podemos guardarlo si queremos
