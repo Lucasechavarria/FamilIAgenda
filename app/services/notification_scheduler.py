@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 import json
 from sqlmodel import Session, select
-from .models import Event, NotificationLog, User, NotificationToken, Task
-from .notification_service import send_notification_to_user
+from ..models import Event, NotificationLog, User, NotificationToken, Task
+from ..notification_service import send_notification_to_user
 
 def parse_notification_config(config_str: str) -> Dict[str, Any]:
     """
