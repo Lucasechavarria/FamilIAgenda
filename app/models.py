@@ -11,22 +11,6 @@ class FamilyMember(SQLModel, table=True):
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    email: str = Field(unique=True, index=True)
-    full_name: str
-    hashed_password: str
-    avatar_url: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-    # Relaciones
-    families: List["Family"] = Relationship(back_populates="members", link_model=FamilyMember)
-    created_events: List["Event"] = Relationship(back_populates="owner")
-    notification_tokens: List["NotificationToken"] = Relationship(back_populates="user")
-    shared_events: List["EventShare"] = Relationship(back_populates="shared_with_user")
-
-class Family(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
-    invitation_code: str = Field(unique=True, index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relaciones
