@@ -8,6 +8,7 @@ interface AuthContextType {
     login: (data: LoginData) => Promise<void>;
     register: (data: RegisterData) => Promise<void>;
     logout: () => void;
+    refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,6 +38,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
     };
 
+    const refreshUser = () => {
+        const currentUser = authService.getCurrentUser();
+        setUser(currentUser);
+    };
+
     return (
         <AuthContext.Provider value={{
             user,
@@ -44,7 +50,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             isLoading,
             login,
             register,
-            logout
+            logout,
+            refreshUser
         }}>
             {children}
         </AuthContext.Provider>

@@ -16,8 +16,19 @@ const api = axios.create({
   },
 });
 
-// ID de familia hardcodeado por ahora para simplificar el MVP
-const CURRENT_FAMILY_ID = 1;
+// Helper to get current family ID from storage
+const getFamilyId = () => {
+  const userStr = localStorage.getItem('user');
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      return user.family_id;
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+};
 
 export const calendarService = {
   /**
@@ -25,7 +36,9 @@ export const calendarService = {
    */
   getEvents: async (): Promise<CalendarEvent[]> => {
     try {
-      const response = await api.get(`/events/?family_id=${CURRENT_FAMILY_ID}`);
+      const familyId = getFamilyId();
+      if (!familyId) return [];
+      const response = await api.get(`/events/?family_id=${familyId}`);
       return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
       // Si es 404 (Familia no encontrada), retornamos array vacío sin hacer ruido
@@ -43,7 +56,7 @@ export const calendarService = {
   createEvent: async (event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent> => {
     const response = await api.post('/events/', {
       ...event,
-      family_id: CURRENT_FAMILY_ID
+      family_id: getFamilyId()
     });
     return response.data;
   },
@@ -74,7 +87,7 @@ export const calendarService = {
     // Este endpoint era el dummy anterior, lo mantenemos por si se expande la funcionalidad
     const response = await api.post('/analyze-schedule', {
       input_text: textInput,
-      family_id: CURRENT_FAMILY_ID
+      family_id: getFamilyId()
     });
     return response.data;
   },
@@ -84,7 +97,7 @@ export const calendarService = {
    */
   getCurrentFamily: async (): Promise<Family> => {
     return {
-      id: CURRENT_FAMILY_ID,
+      id: getFamilyId() || 0,
       name: "Familia Pérez",
       invite_code: "PEREZ2024"
     };

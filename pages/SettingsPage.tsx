@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Check, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Calendar, Check, AlertCircle, ArrowLeft, Users, Plus, LogIn } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../services/auth';
+import { useAuth } from '../context/AuthContext';
 
 export default function SettingsPage() {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [searchParams] = useSearchParams();
     const [googleStatus, setGoogleStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
@@ -43,6 +45,52 @@ export default function SettingsPage() {
                 <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-8">Configuración</h1>
 
                 <div className="grid gap-6">
+                    {/* Sección Familia */}
+                    <section className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
+                        <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                            <Users className="w-5 h-5 text-primary-500" />
+                            Gestión Familiar
+                        </h2>
+
+                        <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-100 dark:border-slate-600 p-4">
+                            {user?.family_id ? (
+                                <div>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <h3 className="font-medium text-slate-900 dark:text-white">Tu Familia</h3>
+                                            <p className="text-sm text-slate-500 dark:text-slate-400">ID: {user.family_id}</p>
+                                        </div>
+                                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Activo</span>
+                                    </div>
+                                    <div className="text-sm text-slate-500 dark:text-slate-400">
+                                        <p>Invita a otros miembros compartiendo el código de invitación.</p>
+                                        {/* Aquí se podría mostrar el código real si lo tuviéramos en el contexto */}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-4">
+                                    <p className="text-slate-600 dark:text-slate-300 mb-4">Aún no perteneces a una familia.</p>
+                                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                        <button
+                                            onClick={() => navigate('/create-family')}
+                                            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                                        >
+                                            <Plus size={18} />
+                                            Crear Familia
+                                        </button>
+                                        <button
+                                            onClick={() => navigate('/join-family')}
+                                            className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                                        >
+                                            <LogIn size={18} />
+                                            Unirse a Familia
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
                     {/* Sección Integraciones */}
                     <section className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
                         <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">

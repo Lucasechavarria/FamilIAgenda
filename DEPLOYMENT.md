@@ -15,10 +15,10 @@
 
 3. **Configurar Variables de Entorno**:
    ```
-   DATABASE_URL=postgresql://postgres.vikyhkrozbbptxcrtgcx:BnzMMVPLAs4DsjaO@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true
-   SUPABASE_URL=https://vikyhkrozbbptxcrtgcx.supabase.co
-   SUPABASE_KEY=[tu-anon-key]
-   SECRET_KEY=[generar-nuevo]
+   DATABASE_URL=postgresql://postgres.PROJECT:PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_KEY=your-anon-key
+   SECRET_KEY=your-secure-secret-key
    ALGORITHM=HS256
    ACCESS_TOKEN_EXPIRE_MINUTES=1440
    GEMINI_API_KEY=[tu-api-key]

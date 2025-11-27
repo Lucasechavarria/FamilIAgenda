@@ -6,6 +6,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import SettingsPage from './pages/SettingsPage';
+import CreateFamilyPage from './pages/CreateFamilyPage';
+import JoinFamilyPage from './pages/JoinFamilyPage';
 
 function App() {
   return (
@@ -28,6 +30,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/create-family"
+              element={
+                <ProtectedRoute>
+                  <CreateFamilyPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/join-family"
+              element={
+                <ProtectedRoute>
+                  <JoinFamilyPage />
                 </ProtectedRoute>
               }
             />

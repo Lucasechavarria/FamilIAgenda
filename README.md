@@ -174,8 +174,10 @@ FamilIAgenda/
 ## 🔑 Endpoints Principales
 
 ### Autenticación
-- `POST /api/auth/register` - Registro de usuario
-- `POST /api/auth/token` - Login
+- `POST /api/auth/register` - Registro de un nuevo usuario. El usuario puede crear una nueva familia o unirse a una existente.
+  - **Body para crear familia**: `{ "full_name": "...", "email": "...", "password": "...", "create_family_name": "Nombre de la Familia" }`
+  - **Body para unirse a familia**: `{ "full_name": "...", "email": "...", "password": "...", "join_family_code": "código-de-invitación" }`
+- `POST /api/auth/token` - Login de usuario. Espera un formulario con `username` (tu email) y `password`.
 
 ### Eventos
 - `GET /api/events` - Listar eventos
