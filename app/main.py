@@ -76,7 +76,8 @@ async def lifespan(app: FastAPI):
     print("--- Rutas Registradas ---")
     for route in app.routes:
         if hasattr(route, "path"):
-            print(f"{route.methods} {route.path}")
+            methods = getattr(route, "methods", "N/A")
+            print(f"{methods} {route.path}")
     print("-------------------------")
     
     yield
