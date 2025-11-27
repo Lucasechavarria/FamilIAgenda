@@ -7,10 +7,13 @@ from .database import create_db_and_tables, engine
 from .models import Family
 from .security import get_password_hash
 from .notification_service import initialize_firebase_app
-from .routers import auth, ai, notifications, events, tasks, sharing, chat #, integrations
+from .routers import auth, ai, notifications, events, tasks, sharing, chat
 
 import asyncio
+from apscheduler.schedulers.background import BackgroundScheduler
 from .services.background_tasks import check_upcoming_tasks
+from .services.notification_scheduler import process_pending_notifications
+from .database import SessionLocal
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,7 +40,29 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️  Admin family creation skipped: {e}")
         
-    # Iniciar tarea en segundo plano para notificaciones
+    # Iniciar scheduler de notificaciones
+    scheduler = BackgroundScheduler()
+    
+    # Tarea cada 5 minutos: procesar notificaciones pendientes
+    def notification_job():
+        try:
+            with SessionLocal() as session:
+                process_pending_notifications(session)
+        except Exception as e:
+            print(f"Error en background task: {e}")
+    
+    scheduler.add_job(
+        func=notification_job,
+        trigger="interval",
+        minutes=5,
+        id="process_notifications",
+        name="Process Pending Notifications"
+    )
+    
+    scheduler.start()
+    print("✅ Notification scheduler started (every 5 minutes)")
+    
+    # Mantener tarea existente de check_upcoming_tasks si existe
     try:
         asyncio.create_task(check_upcoming_tasks())
         print("✅ Background tasks started")
@@ -47,6 +72,8 @@ async def lifespan(app: FastAPI):
     print("\n🚀 FamilIAgenda API lista para operar")
     print("   Docs: http://localhost:8000/docs\n")
     yield
+    # Shutdown
+    scheduler.shutdown()
     print("Cerrando FamilIAgenda...")
 
 # Crear instancia de FastAPI

@@ -54,6 +54,9 @@ class Event(SQLModel, table=True):
     notification_config: Optional[str] = Field(default='{"pre": [15], "post": false}')
     last_notified_at: Optional[datetime] = None
     
+    # Asignación
+    assigned_to_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    
     # Estado
     status: str = Field(default="pending")
     completed_at: Optional[datetime] = None
@@ -63,8 +66,12 @@ class Event(SQLModel, table=True):
     owner_id: int = Field(foreign_key="user.id")
     family_id: int = Field(foreign_key="family.id")
     owner: User = Relationship(back_populates="created_events")
+    assigned_to: Optional[User] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "Event.assigned_to_id"}
+    )
     family: Family = Relationship(back_populates="events")
     shared_with: List["EventShare"] = Relationship(back_populates="event")
+    notification_logs: List["NotificationLog"] = Relationship(back_populates="event")
 
 class EventShare(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -76,6 +83,29 @@ class EventShare(SQLModel, table=True):
     # Relaciones
     event: Event = Relationship(back_populates="shared_with")
     shared_with_user: User = Relationship(back_populates="shared_events")
+
+class NotificationLog(SQLModel, table=True):
+    """Registro de notificaciones programadas y enviadas"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_id: int = Field(foreign_key="event.id")
+    user_id: int = Field(foreign_key="user.id")
+    scheduled_for: datetime
+    sent_at: Optional[datetime] = None
+    notification_type: str  # "pre_event", "recurring_reminder", "multi_stage"
+    stage: Optional[int] = None  # Para notificaciones multi-etapa (30d, 15d, etc.)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Relaciones
+    event: Event = Relationship(back_populates="notification_logs")
+
+class TaskAssignmentHistory(SQLModel, table=True):
+    """Historial de reasignaciones de tareas/eventos"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_id: int = Field(foreign_key="event.id")
+    from_user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    to_user_id: int = Field(foreign_key="user.id")
+    reassigned_at: datetime = Field(default_factory=datetime.utcnow)
+    reason: Optional[str] = None
 
 class NotificationToken(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -98,6 +128,10 @@ class Task(SQLModel, table=True):
     family_id: int = Field(foreign_key="family.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
+    
+    # Notificaciones
+    notification_config: Optional[str] = Field(default='{"pre": [15], "unit": "minutes"}')
+    last_notified_at: Optional[datetime] = None
 
 class ChatMessage(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

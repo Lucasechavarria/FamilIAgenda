@@ -3,9 +3,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, or_
 
 from ..database import get_session
-from ..models import Event, FamilyMember
+from ..models import Event, FamilyMember, TaskAssignmentHistory, NotificationLog
 from ..schemas import EventCreate, EventRead, EventUpdate
 from ..security import get_current_user_id
+from ..services.notification_scheduler import schedule_notifications_for_event, handle_recurring_event_completion
+from datetime import datetime
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -179,3 +182,199 @@ def delete_event(
     session.delete(db_event)
     session.commit()
     return None
+
+# Schemas para nuevos endpoints
+class AssignEventRequest(BaseModel):
+    assigned_to_id: int
+
+class CompleteEventRequest(BaseModel):
+    completed_by_id: Optional[int] = None
+
+class NotificationConfigRequest(BaseModel):
+    notification_config: str  # JSON string
+
+# --- Nuevos Endpoints ---
+
+@router.post("/{event_id}/assign", response_model=EventRead)
+def assign_event(
+    event_id: int,
+    request: AssignEventRequest,
+    session: Session = Depends(get_session),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    Asigna un evento a un usuario específico.
+    Crea un registro en TaskAssignmentHistory.
+    """
+    db_event = session.get(Event, event_id)
+    if not db_event:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    
+    # Verificar permisos (owner o admin de la familia)
+    can_assign = False
+    if db_event.owner_id == user_id:
+        can_assign = True
+    elif db_event.family_id:
+        membership = session.exec(
+            select(FamilyMember)
+            .where(FamilyMember.family_id == db_event.family_id)
+            .where(FamilyMember.user_id == user_id)
+        ).first()
+        if membership and membership.role in ["admin", "moderator"]:
+            can_assign = True
+    
+    if not can_assign:
+        raise HTTPException(status_code=403, detail="No tienes permiso para asignar este evento")
+    
+    # Verificar que el usuario asignado sea miembro de la familia
+    if db_event.family_id:
+        target_membership = session.exec(
+            select(FamilyMember)
+            .where(FamilyMember.family_id == db_event.family_id)
+            .where(FamilyMember.user_id == request.assigned_to_id)
+        ).first()
+        if not target_membership:
+            raise HTTPException(status_code=400, detail="El usuario no es miembro de esta familia")
+    
+    # Crear registro de historial
+    history = TaskAssignmentHistory(
+        event_id=event_id,
+        from_user_id=db_event.assigned_to_id,
+        to_user_id=request.assigned_to_id
+    )
+    session.add(history)
+    
+    # Actualizar asignación
+    db_event.assigned_to_id = request.assigned_to_id
+    session.add(db_event)
+    session.commit()
+    session.refresh(db_event)
+    
+    # Reprogramar notificaciones para el nuevo usuario
+    schedule_notifications_for_event(session, event_id)
+    
+    return db_event
+
+@router.post("/{event_id}/complete", response_model=EventRead)
+def complete_event(
+    event_id: int,
+    request: CompleteEventRequest,
+    session: Session = Depends(get_session),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    Marca un evento como completado.
+    Si es recurrente, programa la próxima instancia.
+    """
+    db_event = session.get(Event, event_id)
+    if not db_event:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    
+    # Verificar permisos (owner, assigned_to, o miembro de familia)
+    can_complete = False
+    if db_event.owner_id == user_id or db_event.assigned_to_id == user_id:
+        can_complete = True
+    elif db_event.family_id:
+        membership = session.exec(
+            select(FamilyMember)
+            .where(FamilyMember.family_id == db_event.family_id)
+            .where(FamilyMember.user_id == user_id)
+        ).first()
+        if membership:
+            can_complete = True
+    
+    if not can_complete:
+        raise HTTPException(status_code=403, detail="No tienes permiso para completar este evento")
+    
+    # Marcar como completado
+    db_event.status = "completed"
+    db_event.completed_at = datetime.utcnow()
+    db_event.completed_by_id = request.completed_by_id or user_id
+    
+    session.add(db_event)
+    session.commit()
+    session.refresh(db_event)
+    
+    # Si es recurrente, crear próxima instancia
+    if db_event.is_recurring:
+        handle_recurring_event_completion(session, event_id)
+    
+    return db_event
+
+@router.put("/{event_id}/notification-config", response_model=EventRead)
+def update_notification_config(
+    event_id: int,
+    request: NotificationConfigRequest,
+    session: Session = Depends(get_session),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    Actualiza la configuración de notificaciones de un evento.
+    Reprograma las notificaciones pendientes.
+    """
+    db_event = session.get(Event, event_id)
+    if not db_event:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    
+    # Verificar permisos (owner o assigned_to)
+    if db_event.owner_id != user_id and db_event.assigned_to_id != user_id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para configurar notificaciones")
+    
+    # Actualizar configuración
+    db_event.notification_config = request.notification_config
+    session.add(db_event)
+    
+    # Eliminar notificaciones pendientes antiguas
+    old_notifications = session.exec(
+        select(NotificationLog)
+        .where(NotificationLog.event_id == event_id)
+        .where(NotificationLog.sent_at == None)
+    ).all()
+    for notif in old_notifications:
+        session.delete(notif)
+    
+    session.commit()
+    session.refresh(db_event)
+    
+    # Reprogramar con nueva configuración
+    schedule_notifications_for_event(session, event_id)
+    
+    return db_event
+
+@router.get("/{event_id}/notification-history")
+def get_notification_history(
+    event_id: int,
+    session: Session = Depends(get_session),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    Obtiene el historial de notificaciones de un evento.
+    """
+    db_event = session.get(Event, event_id)
+    if not db_event:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    
+    # Verificar permisos
+    if db_event.owner_id != user_id and db_event.assigned_to_id != user_id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para ver este historial")
+    
+    notifications = session.exec(
+        select(NotificationLog)
+        .where(NotificationLog.event_id == event_id)
+        .order_by(NotificationLog.scheduled_for)
+    ).all()
+    
+    return {
+        "event_id": event_id,
+        "notifications": [
+            {
+                "id": n.id,
+                "scheduled_for": n.scheduled_for,
+                "sent_at": n.sent_at,
+                "notification_type": n.notification_type,
+                "stage": n.stage,
+                "status": "sent" if n.sent_at else "pending"
+            }
+            for n in notifications
+        ]
+    }

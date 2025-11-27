@@ -30,3 +30,7 @@ def create_db_and_tables():
 def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session
+
+def SessionLocal():
+    """Factory function for creating sessions in background tasks"""
+    return Session(engine)
