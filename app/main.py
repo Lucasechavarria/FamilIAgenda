@@ -71,6 +71,14 @@ async def lifespan(app: FastAPI):
     
     print("\n🚀 FamilIAgenda API lista para operar")
     print("   Docs: http://localhost:8000/docs\n")
+    
+    # Debug: Imprimir todas las rutas registradas
+    print("--- Rutas Registradas ---")
+    for route in app.routes:
+        if hasattr(route, "path"):
+            print(f"{route.methods} {route.path}")
+    print("-------------------------")
+    
     yield
     # Shutdown
     scheduler.shutdown()
