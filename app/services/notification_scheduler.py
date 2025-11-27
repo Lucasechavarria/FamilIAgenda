@@ -7,7 +7,6 @@ from typing import List, Optional, Dict, Any
 import json
 from sqlmodel import Session, select
 from ..models import Event, NotificationLog, User, NotificationToken, Task
-from ..notification_service import send_notification_to_user
 
 def parse_notification_config(config_str: str) -> Dict[str, Any]:
     """
@@ -273,8 +272,11 @@ def send_notification_to_user(session: Session, user_id: int, title: str, body: 
     Envía notificación a un usuario específico.
     Busca todos los tokens del usuario y envía a cada dispositivo.
     """
-    from .notification_service import send_notification_to_family
-    from firebase_admin import messaging
+    try:
+        from firebase_admin import messaging
+    except ImportError:
+        print("Firebase Admin SDK no está disponible")
+        return
     
     # Obtener tokens del usuario
     tokens = session.exec(
