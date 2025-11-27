@@ -64,32 +64,6 @@ class Event(SQLModel, table=True):
     
     # Asignación
     assigned_to_id: Optional[int] = Field(default=None, foreign_key="user.id")
-    
-    # Estado
-    status: str = Field(default="pending")
-    completed_at: Optional[datetime] = None
-    completed_by_id: Optional[int] = Field(default=None, foreign_key="user.id")
-    
-    # Relaciones
-    owner_id: int = Field(foreign_key="user.id")
-    family_id: int = Field(foreign_key="family.id")
-    owner: User = Relationship(back_populates="created_events")
-    assigned_to: Optional[User] = Relationship(
-        back_populates="assigned_events",
-        sa_relationship_kwargs={"foreign_keys": "[Event.assigned_to_id]"}
-    )
-    completed_by: Optional[User] = Relationship(
-        back_populates="completed_events",
-        sa_relationship_kwargs={"foreign_keys": "[Event.completed_by_id]"}
-    )
-    family: Family = Relationship(back_populates="events")
-    shared_with: List["EventShare"] = Relationship(back_populates="event")
-    notification_logs: List["NotificationLog"] = Relationship(back_populates="event")
-
-class EventShare(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    event_id: int = Field(foreign_key="event.id")
-    shared_with_user_id: int = Field(foreign_key="user.id")
     can_edit: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
