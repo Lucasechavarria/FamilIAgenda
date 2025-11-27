@@ -23,44 +23,65 @@ export const AssignmentSelector: React.FC<AssignmentSelectorProps> = ({
     const [familyMembers, setFamilyMembers] = useState<User[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<number | undefined>(currentAssignedId);
     const [loading, setLoading] = useState(false);
-};
 
-return (
-    <div className="space-y-3">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            <Users size={16} className="inline mr-2" />
-            Asignar a
-        </label>
+    useEffect(() => {
+        loadFamilyMembers();
+    }, [familyId]);
 
-        {loading ? (
-            <div className="text-sm text-gray-500">Cargando miembros...</div>
-        ) : (
-            <>
-                <select
-                    value={selectedUserId || ''}
-                    onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                    <option value="">Sin asignar</option>
-                    {familyMembers.map((member) => (
-                        <option key={member.id} value={member.id}>
-                            {member.full_name} ({member.email})
-                        </option>
-                    ))}
-                </select>
+    const loadFamilyMembers = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`/api/families/${familyId}/members`);
+            setFamilyMembers(response.data);
+        } catch (error) {
+            console.error('Error loading family members:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-                {selectedUserId && selectedUserId !== currentAssignedId && (
-                    <button
-                        onClick={handleAssign}
-                        className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+    const handleAssign = () => {
+        if (selectedUserId) {
+            onAssign(selectedUserId);
+        }
+    };
+
+    return (
+        <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Users size={16} className="inline mr-2" />
+                Asignar a
+            </label>
+
+            {loading ? (
+                <div className="text-sm text-gray-500">Cargando miembros...</div>
+            ) : (
+                <>
+                    <select
+                        value={selectedUserId || ''}
+                        onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
-                        Asignar
-                    </button>
-                )}
-            </>
-        )}
-    </div>
-);
+                        <option value="">Sin asignar</option>
+                        {familyMembers.map((member) => (
+                            <option key={member.id} value={member.id}>
+                                {member.full_name} ({member.email})
+                            </option>
+                        ))}
+                    </select>
+
+                    {selectedUserId && selectedUserId !== currentAssignedId && (
+                        <button
+                            onClick={handleAssign}
+                            className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                        >
+                            Asignar
+                        </button>
+                    )}
+                </>
+            )}
+        </div>
+    );
 };
 
 interface RecurrenceConfigProps {
@@ -103,7 +124,7 @@ export const RecurrenceConfig: React.FC<RecurrenceConfigProps> = ({ value, onCha
         } else if (frequency === 'weekly' && selectedDays.length > 0) {
             onChange(`weekly:${selectedDays.join(',')}:${time}`);
         }
-    }, [frequency, selectedDays, time]);
+    }, [frequency, selectedDays, time, onChange]);
 
     const toggleDay = (day: string) => {
         setSelectedDays(prev =>
@@ -152,8 +173,8 @@ export const RecurrenceConfig: React.FC<RecurrenceConfigProps> = ({ value, onCha
                             key={day.value}
                             onClick={() => toggleDay(day.value)}
                             className={`px-2 py-1 text-xs rounded ${selectedDays.includes(day.value)
-                                ? 'bg-purple-600 text-white'
-                                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                    ? 'bg-purple-600 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                                 }`}
                         >
                             {day.label}
