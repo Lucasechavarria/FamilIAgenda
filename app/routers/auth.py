@@ -10,7 +10,7 @@ from ..security import get_password_hash, verify_password, create_access_token, 
 
 router = APIRouter()
 
-@router.post("/register", response_model=Token, summary="Registra un nuevo usuario")
+@router.post("/register/", response_model=Token, summary="Registra un nuevo usuario")
 def register_new_user(user_data: UserCreate, session: Session = Depends(get_session)):
     # 1. Verificar si el email ya existe
     existing_user = session.exec(select(User).where(User.email == user_data.email)).first()
