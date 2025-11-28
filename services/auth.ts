@@ -56,7 +56,8 @@ export const authService = {
     },
 
     async login(data: LoginData): Promise<LoginResponse> {
-        const response = await axios.post<LoginResponse>(`${API_URL}/token`, data);
+        console.log(`Intentando login en: ${API_URL}/token/`);
+        const response = await axios.post<LoginResponse>(`${API_URL}/token/`, data);
         if (response.data.access_token) {
             localStorage.setItem('access_token', response.data.access_token);
         }

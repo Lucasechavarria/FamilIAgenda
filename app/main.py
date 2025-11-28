@@ -97,14 +97,14 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Permitir todos los orígenes temporalmente
-    allow_credentials=True,
-    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Middleware de Logging
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 import time
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -121,6 +121,16 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             raise
 
 app.add_middleware(LoggingMiddleware)
+
+# Exception Handler para 422
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    print(f"❌  VALIDATION ERROR: {exc.errors()}")
+    print(f"    Body: {exc.body}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(exc.body)},
+    )
 
 # Ruta raíz
 @app.get("/")

@@ -68,7 +68,8 @@ def register_new_user(user_data: UserCreate, session: Session = Depends(get_sess
         "user_email": db_user.email
     }
 
-@router.post("/token", response_model=Token, summary="Inicia sesión")
+@router.post("/token", response_model=Token, summary="Inicia sesión (alias)", include_in_schema=False)
+@router.post("/token/", response_model=Token, summary="Inicia sesión")
 def login_for_access_token(form_data: UserLogin, session: Session = Depends(get_session)):
     try:
         user = session.exec(select(User).where(User.email == form_data.email)).first()
