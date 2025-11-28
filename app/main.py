@@ -94,9 +94,17 @@ app = FastAPI(
 )
 
 # Configurar CORS
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8000",
+    "https://famil-ia-genda.vercel.app",
+    "https://famil-ia-genda.vercel.app/",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permitir todos los orígenes temporalmente
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
