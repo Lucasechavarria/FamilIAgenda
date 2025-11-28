@@ -102,6 +102,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Middleware de Logging
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+import time
+
+class LoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        print(f"➡️  INCOMING: {request.method} {request.url.path}")
+        try:
+            response = await call_next(request)
+            process_time = time.time() - start_time
+            print(f"⬅️  RESPONSE: {response.status_code} (took {process_time:.4f}s)")
+            return response
+        except Exception as e:
+            print(f"❌  ERROR processing request: {e}")
+            raise
+
+app.add_middleware(LoggingMiddleware)
+
 # Ruta raíz
 @app.get("/")
 async def root():
