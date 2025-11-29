@@ -81,7 +81,6 @@ export default function LoginPage() {
                                     value={email}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                                     className="input-field pl-10"
-                                    style={{ color: '#0f172a' }}
                                     placeholder="tu@email.com"
                                     required
                                     autoComplete="email"
@@ -100,7 +99,6 @@ export default function LoginPage() {
                                     value={password}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                                     className="input-field pl-10 pr-12"
-                                    style={{ color: '#0f172a' }}
                                     placeholder="••••••••"
                                     required
                                     autoComplete="current-password"
