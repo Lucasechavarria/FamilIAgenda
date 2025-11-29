@@ -93,13 +93,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configurar CORS
+# Configurar CORS - Permitir todos los subdominios de Vercel
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:8000",
     "https://famil-ia-genda.vercel.app",
-    "https://famil-ia-genda.vercel.app/",
+    "https://familia-ia-genda.vercel.app",
 ]
 
 app.add_middleware(
@@ -108,6 +108,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Middleware de Logging
