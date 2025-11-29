@@ -48,9 +48,13 @@ export default function LoginPage() {
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
                             transition={{ type: 'spring', duration: 0.6 }}
-                            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-2xl mb-4 shadow-neon-blue"
+                            className="inline-block mb-4"
                         >
-                            <Sparkles className="w-8 h-8 text-white" />
+                            <img
+                                src="/pwa-512x512.png"
+                                alt="FamilIAgenda Logo"
+                                className="w-20 h-20 drop-shadow-2xl"
+                            />
                         </motion.div>
                         <h1 className="text-3xl font-display font-bold bg-gradient-to-r from-primary-glow to-secondary-glow bg-clip-text text-transparent">
                             FamilIAgenda

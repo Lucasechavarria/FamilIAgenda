@@ -70,9 +70,11 @@ export const DashboardPage: React.FC = () => {
 
                     <div className="flex justify-between items-start">
                         <h1 className="text-2xl font-bold flex items-center gap-3 tracking-tight relative z-10">
-                            <div className="w-10 h-10 bg-white text-primary-600 rounded-xl flex items-center justify-center shadow-md transform transition-transform hover:scale-105 duration-300">
-                                <CalendarIcon size={22} strokeWidth={2.5} />
-                            </div>
+                            <img
+                                src="/pwa-512x512.png"
+                                alt="FamilIAgenda Logo"
+                                className="w-10 h-10 drop-shadow-lg"
+                            />
                             <div>
                                 <span className="block text-lg leading-none">Famil<span className="text-primary-200">IA</span>genda</span>
                                 <span className="text-[10px] font-medium text-primary-100 uppercase tracking-widest opacity-80">Organización Inteligente</span>
