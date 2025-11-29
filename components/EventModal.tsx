@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Calendar, Clock, Users, Tag, FileText } from 'lucide-react';
 import { api } from '../services/auth';
+import { FamilyMemberSelector } from './FamilyMemberSelector';
 
 interface EventModalProps {
     isOpen: boolean;
@@ -19,6 +20,7 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onEvent
         initialDate ? new Date(initialDate.getTime() + 3600000).toISOString().slice(0, 16) : new Date(Date.now() + 3600000).toISOString().slice(0, 16)
     );
     const [category, setCategory] = useState('personal');
+    const [assignedTo, setAssignedTo] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -44,6 +46,7 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onEvent
                 end_time: new Date(endDate).toISOString(),
                 category,
                 is_recurring: false,
+                assigned_to_id: assignedTo,
             });
 
             onEventCreated();
@@ -59,6 +62,7 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onEvent
         setTitle('');
         setDescription('');
         setCategory('personal');
+        setAssignedTo(null);
         setError('');
         onClose();
     };
@@ -164,8 +168,8 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onEvent
                                     type="button"
                                     onClick={() => setCategory(cat.value)}
                                     className={`p-3 rounded-xl border-2 transition-all duration-200 ${category === cat.value
-                                            ? 'border-primary-500 bg-primary-500/20 scale-105'
-                                            : 'border-white/10 bg-white/5 hover:border-white/20'
+                                        ? 'border-primary-500 bg-primary-500/20 scale-105'
+                                        : 'border-white/10 bg-white/5 hover:border-white/20'
                                         }`}
                                 >
                                     <div className="flex items-center gap-2">
@@ -175,6 +179,14 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onEvent
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Asignar a Miembro */}
+                    <div>
+                        <FamilyMemberSelector
+                            selectedMemberId={assignedTo}
+                            onSelectMember={setAssignedTo}
+                        />
                     </div>
 
                     {/* Botones */}
