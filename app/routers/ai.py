@@ -24,24 +24,44 @@ router = APIRouter()
 
 @router.post("/interpretar", summary="Interpreta texto de usuario para crear un evento")
 async def procesar_texto_ia(prompt: PromptUsuario):
+    print(f"🤖 Recibida solicitud de IA: {prompt.texto[:50]}...")
+    
     if not api_key:
+        print("❌ GEMINI_API_KEY no está configurada")
         raise HTTPException(status_code=500, detail="La API Key de Gemini no está configurada.")
+    
+    print(f"✅ API Key presente: {api_key[:10]}...")
 
-    model = genai.GenerativeModel('gemini-1.5-flash')  # type: ignore
-    ahora = datetime.now().isoformat()
-
-    system_prompt = f"""
-    Actúa como un asistente de calendario experto. La fecha y hora actual es: {ahora}.
-    Tu tarea es convertir el texto del usuario en un objeto JSON estricto con los campos "title", "start_time", "end_time", "category", "description".
-    Texto del usuario: "{prompt.texto}"
-    IMPORTANTE: Devuelve SOLO el JSON.
-    """
     try:
+        model = genai.GenerativeModel('gemini-1.5-flash')  # type: ignore
+        ahora = datetime.now().isoformat()
+
+        system_prompt = f"""
+        Actúa como un asistente de calendario experto. La fecha y hora actual es: {ahora}.
+        Tu tarea es convertir el texto del usuario en un objeto JSON estricto con los campos "title", "start_time", "end_time", "category", "description".
+        Texto del usuario: "{prompt.texto}"
+        IMPORTANTE: Devuelve SOLO el JSON.
+        """
+        
+        print("📡 Enviando request a Gemini...")
         response = model.generate_content(system_prompt)
+        print(f"✅ Respuesta recibida: {response.text[:100]}...")
+        
         texto_limpio = response.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(texto_limpio)
+        resultado = json.loads(texto_limpio)
+        print(f"✅ JSON parseado correctamente")
+        return resultado
+        
+    except json.JSONDecodeError as e:
+        print(f"❌ Error parseando JSON: {str(e)}")
+        print(f"   Texto recibido: {texto_limpio}")
+        raise HTTPException(status_code=500, detail=f"La IA no devolvió un JSON válido: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al procesar con IA: {str(e)}")
+        print(f"❌ Error general en IA: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error al procesar con IA: {type(e).__name__}: {str(e)}")
+
 
 @router.post("/suggest-time", summary="Sugiere mejor horario para un evento usando IA")
 async def suggest_optimal_time(
