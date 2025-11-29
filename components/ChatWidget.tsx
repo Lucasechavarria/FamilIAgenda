@@ -45,7 +45,11 @@ export const ChatWidget: React.FC = () => {
 
         // Conectar WebSocket
         const token = localStorage.getItem('access_token');
-        const wsUrl = `ws://localhost:8000/api/chat/ws/${user.family_id || 1}/${token}`;
+        // Determinar URL del WebSocket dinámicamente
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws';
+        const wsHost = apiUrl.replace(/^https?:\/\//, '');
+        const wsUrl = `${wsProtocol}://${wsHost}/api/chat/ws/${user.family_id || 1}/${token}`;
 
         const ws = new WebSocket(wsUrl);
 

@@ -108,10 +108,12 @@ export const calendarService = {
    */
   registerNotificationToken: async (token: string, userId: string) => {
     try {
-      await api.post('/notifications/register', {
+      await api.post('/notifications/register-token', {
         token,
-        user_id: userId,
-        device_type: 'web'
+        device_info: { // Backend expects device_info, not user_id (user_id is from token)
+          user_agent: navigator.userAgent,
+          platform: navigator.platform
+        }
       });
       console.log("Token de notificación registrado en Backend");
     } catch (error) {

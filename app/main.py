@@ -133,13 +133,21 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 app.add_middleware(LoggingMiddleware)
 
 # Exception Handler para 422
+# Exception Handler para 422
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     print(f"❌  VALIDATION ERROR: {exc.errors()}")
-    print(f"    Body: {exc.body}")
+    try:
+        body = exc.body
+        if isinstance(body, bytes):
+            body = body.decode("utf-8")
+    except Exception:
+        body = str(exc.body)
+        
+    print(f"    Body: {body}")
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors(), "body": str(exc.body)},
+        content={"detail": exc.errors(), "body": body},
     )
 
 # Ruta raíz
