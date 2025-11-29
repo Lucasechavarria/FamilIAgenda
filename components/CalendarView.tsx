@@ -6,7 +6,8 @@ import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import esLocale from '@fullcalendar/core/locales/es';
 import { calendarService } from '../services/api';
-import { X, Clock, AlignLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { X, Clock, AlignLeft, Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { EventModal } from './EventModal';
 
 interface CalendarViewProps {
   refreshTrigger: number;
@@ -16,6 +17,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -395,6 +397,25 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
           </div>
         </div>
       )}
+
+      {/* Botón Flotante para Crear Evento */}
+      <button
+        onClick={() => setIsCreateModalOpen(true)}
+        className="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-10 group"
+        title="Crear nuevo evento"
+      >
+        <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
+      </button>
+
+      {/* Modal de Crear Evento */}
+      <EventModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onEventCreated={() => {
+          loadEvents();
+          setIsCreateModalOpen(false);
+        }}
+      />
     </div>
   );
 };
