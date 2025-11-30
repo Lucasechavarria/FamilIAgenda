@@ -15,6 +15,7 @@ class User(SQLModel, table=True):
     full_name: str
     hashed_password: str
     avatar_url: Optional[str] = None
+    color: str = Field(default="#3B82F6")  # Color personal para identificación visual
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relaciones

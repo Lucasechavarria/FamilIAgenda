@@ -48,6 +48,10 @@ class EventBase(BaseModel):
     end_time: datetime
     category: str = "general"
     visibility: str = "family"  # 'private', 'family'
+    is_recurring: bool = False
+    recurrence_pattern: Optional[str] = None
+    assigned_to_id: Optional[int] = None
+    family_id: Optional[int] = None
 
 class EventCreate(EventBase):
     pass
@@ -83,6 +87,7 @@ class TaskBase(BaseModel):
     description: Optional[str] = None
     due_date: datetime
     assigned_to_id: Optional[int] = None
+    priority: str = "normal"
     is_recurring: bool = False
     recurrence_pattern: Optional[str] = None
     notification_config: Optional[str] = '{"pre": [15], "post": false}'

@@ -7,6 +7,7 @@ import { NotificationManager } from '../components/NotificationManager';
 import { useAuth } from '../context/AuthContext';
 import { TasksView } from '../components/TasksView';
 import { ChatWidget } from '../components/ChatWidget';
+import { MetricsDashboard } from '../components/MetricsDashboard';
 
 export const DashboardPage: React.FC = () => {
     const { user, logout } = useAuth();
@@ -14,7 +15,7 @@ export const DashboardPage: React.FC = () => {
     // Trigger para recargar el calendario si la IA crea eventos
     const [refreshCalendar, setRefreshCalendar] = useState(0);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [viewMode, setViewMode] = useState<'calendar' | 'tasks'>('calendar');
+    const [viewMode, setViewMode] = useState<'calendar' | 'tasks' | 'metrics'>('calendar');
 
     // Estado del Modo Oscuro
     const [darkMode, setDarkMode] = useState(() => {
@@ -188,7 +189,7 @@ export const DashboardPage: React.FC = () => {
                 {/* Header Desktop (Selector de Vista) */}
                 <div className="hidden lg:flex items-center justify-between px-8 py-4 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">
-                        {viewMode === 'calendar' ? 'Calendario' : 'Tareas y Rutinas'}
+                        {viewMode === 'calendar' ? 'Calendario' : viewMode === 'tasks' ? 'Tareas y Rutinas' : 'Métricas y Estadísticas'}
                     </h2>
                     <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
                         <button
@@ -203,6 +204,12 @@ export const DashboardPage: React.FC = () => {
                         >
                             Tareas
                         </button>
+                        <button
+                            onClick={() => setViewMode('metrics')}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'metrics' ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                        >
+                            Métricas
+                        </button>
                     </div>
                 </div>
 
@@ -210,8 +217,10 @@ export const DashboardPage: React.FC = () => {
                     <div className="h-full flex flex-col">
                         {viewMode === 'calendar' ? (
                             <CalendarView refreshTrigger={refreshCalendar} />
-                        ) : (
+                        ) : viewMode === 'tasks' ? (
                             <TasksView />
+                        ) : (
+                            <MetricsDashboard />
                         )}
                     </div>
                 </div>

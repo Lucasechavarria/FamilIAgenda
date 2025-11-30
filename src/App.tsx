@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import SettingsPage from './pages/SettingsPage';
 import CreateFamilyPage from './pages/CreateFamilyPage';
 import JoinFamilyPage from './pages/JoinFamilyPage';
+import UserSettingsPage from './pages/UserSettingsPage';
 
 function App() {
   return (
@@ -46,6 +47,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <JoinFamilyPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/user-settings"
+              element={
+                <ProtectedRoute>
+                  <UserSettingsPage />
                 </ProtectedRoute>
               }
             />

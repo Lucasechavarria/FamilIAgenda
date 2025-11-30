@@ -2,7 +2,7 @@
 
 ## 📊 Situación Actual
 
-Tu API key de Gemini está configurada: `AIzaSyDbfgzARui7wto89yY1nmSK9Ig9o_sVAck`
+Tu API key de Gemini está configurada: `YOUR_API_KEY`
 
 El error 500 puede deberse a:
 1. **Límite de cuota de Gemini alcanzado** (60 requests/minuto en plan gratuito)

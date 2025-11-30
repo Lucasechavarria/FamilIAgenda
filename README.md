@@ -1,240 +1,116 @@
-# 🏠 FamilIAgenda - Smart Family Calendar
+# 🌟 FamilIAgenda
 
-<div align="center">
+**Organización Familiar Inteligente Potenciada por IA**
 
-![FamilIAgenda Logo](https://img.shields.io/badge/FamilIAgenda-Smart%20Calendar-blue?style=for-the-badge)
+FamilIAgenda es una aplicación web moderna diseñada para transformar la gestión del hogar. Combina un calendario compartido robusto, asignación de tareas, chat en tiempo real y métricas de productividad, todo potenciado por Inteligencia Artificial para automatizar la creación de eventos.
 
-**Calendario familiar inteligente con IA integrada**
+![FamilIAgenda Dashboard](public/pwa-512x512.png)
 
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=black)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat&logo=supabase&logoColor=white)](https://supabase.com/)
+## 🚀 Características Principales
 
-</div>
+### 📅 Calendario Inteligente
+- **Creación con IA**: Describe tu evento en lenguaje natural ("Cena con los abuelos el viernes a las 8") y la IA lo agendará por ti.
+- **Recurrencia Avanzada**: Configura eventos que se repiten (diario, semanal, mensual, anual) con control total sobre días y finalización.
+- **Categorización Visual**: 6 categorías (Trabajo, Personal, Familia, Salud, Ocio, Escuela) con colores distintivos.
 
----
+### 👥 Gestión Familiar
+- **Asignación de Tareas**: Asigna responsabilidades a miembros específicos de la familia.
+- **Colores Personalizados**: Cada miembro elige su propio color para identificar sus tareas de un vistazo.
+- **Perfiles de Usuario**: Gestión de avatares y preferencias personales.
 
-## 🌟 Características
+### 📊 Dashboard de Métricas
+- **Análisis de Productividad**: Visualiza tareas completadas vs. pendientes.
+- **Distribución de Carga**: Gráficos para ver quién hace qué y equilibrar las responsabilidades.
+- **Histórico**: Filtra estadísticas por semana, mes o histórico completo.
 
-- 📅 **Calendario Familiar Compartido**: Gestiona eventos de toda la familia en un solo lugar
-- 🤖 **IA Integrada (Google Gemini)**: Crea eventos con lenguaje natural
-- 🔔 **Notificaciones Inteligentes**: Recordatorios automáticos personalizables
-- 💬 **Chat Familiar en Tiempo Real**: WebSocket para comunicación instantánea
-- ✅ **Gestión de Tareas**: Asigna y completa tareas familiares
-- 🎨 **UI Premium**: Diseño moderno con animaciones fluidas
-- 🔐 **Autenticación Segura**: JWT + bcrypt para máxima seguridad
-- 📱 **Responsive**: Funciona perfectamente en móviles y desktop
+### 💬 Comunicación
+- **Chat Familiar**: Sala de chat integrada en tiempo real para coordinación rápida.
+- **Notificaciones**: Alertas sobre nuevos eventos y asignaciones.
 
----
-
-## 🚀 Tech Stack
-
-### Backend
-- **FastAPI** - Framework web moderno y rápido
-- **SQLModel** - ORM con validación Pydantic
-- **PostgreSQL** (Supabase) - Base de datos robusta
-- **Google Gemini AI** - Procesamiento de lenguaje natural
-- **WebSockets** - Comunicación en tiempo real
-- **JWT** - Autenticación segura
+## 🛠️ Stack Tecnológico
 
 ### Frontend
-- **React 18** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool ultrarrápido
-- **TailwindCSS** - Utility-first CSS
-- **React Router** - Navegación
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Estilos**: Tailwind CSS + Framer Motion (Animaciones)
+- **Iconos**: Lucide React
+- **Estado**: Context API
 
----
+### Backend
+- **Framework**: FastAPI (Python 3.10+)
+- **ORM**: SQLModel (SQLAlchemy + Pydantic)
+- **Base de Datos**: PostgreSQL (Supabase) / SQLite (Dev)
+- **IA**: Groq API / Google Gemini
+- **Testing**: Pytest
 
-## 📋 Requisitos Previos
+## 📦 Instalación y Configuración
 
-- Python 3.11+
+### Prerrequisitos
 - Node.js 18+
-- PostgreSQL (o cuenta de Supabase)
-- Google Gemini API Key
+- Python 3.10+
+- PostgreSQL (opcional, usa SQLite por defecto)
 
----
-
-## ⚙️ Instalación
-
-### 1. Clonar el Repositorio
+### 1. Backend (API)
 
 ```bash
-git clone https://github.com/Lucasechavarria/FamilIAgenda.git
-cd FamilIAgenda
-```
+cd app
+# Crear entorno virtual
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-### 2. Configurar Backend
-
-```bash
 # Instalar dependencias
-pip install -r requirements.txt
+pip install -r ../requirements.txt
 
-# Copiar y configurar variables de entorno
+# Configurar variables de entorno
 cp .env.example .env
-# Editar .env con tus credenciales
+# Editar .env con tus claves API (Groq, Supabase, etc.)
+
+# Iniciar servidor
+python -m uvicorn main:app --reload
 ```
 
-### 3. Configurar Frontend
+### 2. Frontend (Cliente)
 
 ```bash
-# Instalar dependencias
+# En la raíz del proyecto
 npm install
-```
 
-### 4. Variables de Entorno
-
-Edita `.env` con tus credenciales:
-
-```env
-# Database (Producción - Connection Pooler)
-DATABASE_URL=postgresql://postgres.PROJECT:PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true
-
-# Supabase
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-anon-key
-
-# Security
-SECRET_KEY=your-secret-key-here
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
-
-# AI
-GEMINI_API_KEY=your-gemini-api-key
-```
-
----
-
-## 🏃 Ejecutar Localmente
-
-### Backend
-
-```bash
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-API disponible en: http://localhost:8000
-Documentación: http://localhost:8000/docs
-
-### Frontend
-
-```bash
+# Iniciar servidor de desarrollo
 npm run dev
 ```
 
-App disponible en: http://localhost:5173
+## 🧪 Testing
 
----
-
-## 🌐 Deployment
-
-### Backend (Render.com)
-
-1. Conecta tu repositorio en [Render.com](https://render.com)
-2. Configura:
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-3. Agrega variables de entorno desde `.env.example`
-
-### Frontend (Vercel)
+El proyecto incluye una suite completa de pruebas unitarias y de integración.
 
 ```bash
-npm run build
-vercel --prod
+# Ejecutar todas las pruebas
+python -m pytest testing/
+
+# Ejecutar con cobertura
+python -m pytest --cov=app testing/
 ```
 
-**Ver guía completa**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+## 🚀 Despliegue
+
+### Backend (Render)
+1. Conectar repositorio a Render.
+2. Configurar como Web Service.
+3. Build Command: `pip install -r requirements.txt`
+4. Start Command: `python -m uvicorn app.main:app --host 0.0.0.0 --port 10000`
+5. Agregar variables de entorno.
+
+### Frontend (Vercel)
+1. Importar proyecto en Vercel.
+2. Framework Preset: Vite.
+3. Build Command: `npm run build`
+4. Output Directory: `dist`
+5. Configurar `VITE_API_URL` apuntando al backend en Render.
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT.
 
 ---
 
-## 📁 Estructura del Proyecto
-
-```
-FamilIAgenda/
-├── app/                    # Backend (FastAPI)
-│   ├── routers/           # API endpoints
-│   ├── models.py          # Modelos de base de datos
-│   ├── schemas.py         # Esquemas Pydantic
-│   ├── database.py        # Configuración DB
-│   ├── security.py        # Autenticación JWT
-│   └── main.py            # Punto de entrada
-├── pages/                 # Frontend pages (React)
-├── components/            # Componentes reutilizables
-├── context/               # React contexts
-├── services/              # API services
-├── .env.example           # Template de variables
-├── DEPLOYMENT.md          # Guía de deployment
-└── requirements.txt       # Dependencias Python
-```
-
----
-
-## 🔑 Endpoints Principales
-
-### Autenticación
-- `POST /api/auth/register` - Registro de un nuevo usuario. El usuario puede crear una nueva familia o unirse a una existente.
-  - **Body para crear familia**: `{ "full_name": "...", "email": "...", "password": "...", "create_family_name": "Nombre de la Familia" }`
-  - **Body para unirse a familia**: `{ "full_name": "...", "email": "...", "password": "...", "join_family_code": "código-de-invitación" }`
-- `POST /api/auth/token` - Login de usuario. Espera un formulario con `username` (tu email) y `password`.
-
-### Eventos
-- `GET /api/events` - Listar eventos
-- `POST /api/events` - Crear evento
-- `PATCH /api/events/{id}` - Actualizar evento
-- `DELETE /api/events/{id}` - Eliminar evento
-
-### IA
-- `POST /api/ai/interpretar` - Crear evento con lenguaje natural
-- `POST /api/ai/suggest-time` - Sugerir mejor horario
-
-### Tareas
-- `GET /api/tasks` - Listar tareas
-- `POST /api/tasks` - Crear tarea
-- `POST /api/tasks/{id}/complete` - Completar tarea
-
-### Chat
-- `WS /api/chat/ws/{family_id}/{token}` - WebSocket chat
-- `GET /api/chat/history/{family_id}` - Historial
-
----
-
-## 🤝 Contribuir
-
-1. Fork el proyecto
-2. Crea tu feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push al branch (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
----
-
-## 📝 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver [LICENSE](./LICENSE) para más detalles.
-
----
-
-## 👨‍💻 Autor
-
-**Lucas Echavarria**
-
-- GitHub: [@Lucasechavarria](https://github.com/Lucasechavarria)
-
----
-
-## 🙏 Agradecimientos
-
-- [FastAPI](https://fastapi.tiangolo.com/) por el excelente framework
-- [Supabase](https://supabase.com/) por la infraestructura de base de datos
-- [Google Gemini](https://ai.google.dev/) por las capacidades de IA
-- [Vite](https://vitejs.dev/) por el build tool ultrarrápido
-
----
-
-<div align="center">
-
-**⭐ Si te gusta este proyecto, dale una estrella! ⭐**
-
-</div>
+**Desarrollado con ❤️ para familias organizadas.**
