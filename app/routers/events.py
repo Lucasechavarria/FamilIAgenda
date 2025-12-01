@@ -28,11 +28,14 @@ def create_event(
         if not membership:
             raise HTTPException(status_code=403, detail="No eres miembro de esta familia")
 
-    db_event = Event.model_validate(event)
-    db_event.owner_id = user_id
+    event_data = event.model_dump()
+    event_data["owner_id"] = user_id
+    
     # Si no se especifica familia, es privado por defecto (o personal)
-    if not db_event.family_id:
-        db_event.visibility = "private"
+    if not event_data.get("family_id"):
+        event_data["visibility"] = "private"
+
+    db_event = Event.model_validate(event_data)
         
     session.add(db_event)
     session.commit()
@@ -258,7 +261,7 @@ def assign_event(
 @router.post("/{event_id}/complete", response_model=EventRead)
 def complete_event(
     event_id: int,
-    request: CompleteEventRequest,
+    request: Optional[CompleteEventRequest] = None,
     session: Session = Depends(get_session),
     user_id: int = Depends(get_current_user_id)
 ):
@@ -289,7 +292,7 @@ def complete_event(
     # Marcar como completado
     db_event.status = "completed"
     db_event.completed_at = datetime.utcnow()
-    db_event.completed_by_id = request.completed_by_id or user_id
+    db_event.completed_by_id = (request.completed_by_id if request else None) or user_id
     
     session.add(db_event)
     session.commit()

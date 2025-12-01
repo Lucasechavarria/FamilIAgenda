@@ -15,6 +15,7 @@ class User(SQLModel, table=True):
     full_name: str
     hashed_password: str
     avatar_url: Optional[str] = None
+    color: str = Field(default="#3B82F6")  # Color personal para identificación visual
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relaciones
@@ -105,8 +106,11 @@ class NotificationLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     event_id: int = Field(foreign_key="event.id")
     user_id: int = Field(foreign_key="user.id")
+    title: str
+    body: str
     scheduled_for: datetime
     sent_at: Optional[datetime] = None
+    status: str = Field(default="pending")  # pending, sent, failed
     notification_type: str  # "pre_event", "recurring_reminder", "multi_stage"
     stage: Optional[int] = None  # Para notificaciones multi-etapa (30d, 15d, etc.)
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -127,7 +131,8 @@ class NotificationToken(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
     token: str = Field(unique=True)
-    device_type: str  # 'web', 'android', 'ios'
+    device_type: str = Field(default="web")  # 'web', 'android', 'ios'
+    device_info: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     # Relaciones
@@ -142,8 +147,10 @@ class Task(SQLModel, table=True):
     status: str = Field(default="pending")
     assigned_to_id: Optional[int] = Field(default=None, foreign_key="user.id")
     family_id: int = Field(foreign_key="family.id")
+    created_by_id: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
+    completed_by_id: Optional[int] = Field(default=None, foreign_key="user.id")
     
     # Notificaciones
     notification_config: Optional[str] = Field(default='{"pre": [15], "unit": "minutes"}')
@@ -153,5 +160,5 @@ class ChatMessage(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     family_id: int = Field(foreign_key="family.id")
     user_id: int = Field(foreign_key="user.id")
-    message: str
+    content: str
     created_at: datetime = Field(default_factory=datetime.utcnow)

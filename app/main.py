@@ -4,10 +4,10 @@ from contextlib import asynccontextmanager
  
 from sqlmodel import Session, select
 from .database import create_db_and_tables, engine
-from .models import Family
+from .models import User, Family, FamilyMember, Event, Task, ChatMessage, NotificationLog, NotificationToken, EventShare, TaskAssignmentHistory
 from .security import get_password_hash
 from .notification_service import initialize_firebase_app
-from .routers import auth, ai, notifications, events, tasks, sharing, chat
+from .routers import auth, ai, notifications, events, tasks, sharing, chat, metrics
 
 import asyncio
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -100,6 +100,8 @@ origins = [
     "http://localhost:8000",
     "https://famil-ia-genda.vercel.app",
     "https://familia-ia-genda.vercel.app",
+    "https://familiagenda-frontend.onrender.com",
+    "https://familiagenda-backend.onrender.com",
 ]
 
 app.add_middleware(
@@ -135,6 +137,8 @@ app.add_middleware(LoggingMiddleware)
 
 # Exception Handler para 422
 # Exception Handler para 422
+from fastapi.encoders import jsonable_encoder
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     print(f"❌  VALIDATION ERROR: {exc.errors()}")
@@ -148,7 +152,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     print(f"    Body: {body}")
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors(), "body": body},
+        content={"detail": jsonable_encoder(exc.errors()), "body": body},
     )
 
 # Ruta raíz
@@ -160,8 +164,7 @@ async def root():
 app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(ai.router, prefix="/api/ai", tags=["Inteligencia Artificial"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notificaciones"])
+app.include_router(metrics.router, prefix="/api/events", tags=["Métricas"])
 app.include_router(events.router, prefix="/api/events", tags=["Eventos"])
-# app.include_router(sharing.router, prefix="/api", tags=["Compartir Eventos"])
-# app.include_router(integrations.router, prefix="/api/integrations", tags=["Integraciones"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Tareas"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])

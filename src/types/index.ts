@@ -31,3 +31,9 @@ export interface AIAnalysisResponse {
   suggestions: string[];
   conflicts: string[];
 }
+
+export interface User {
+  id: number;
+  full_name: string;
+  email: string;
+}

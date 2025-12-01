@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Users, Calendar, Bell, Repeat } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
-
-interface User {
-    id: number;
-    full_name: string;
-    email: string;
-}
+import { calendarService } from '../services/api';
+import { User } from '../types';
 
 interface AssignmentSelectorProps {
     familyId: number;
@@ -31,8 +26,9 @@ export const AssignmentSelector: React.FC<AssignmentSelectorProps> = ({
     const loadFamilyMembers = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(`/api/families/${familyId}/members`);
-            setFamilyMembers(response.data);
+            setLoading(true);
+            const members = await calendarService.getFamilyMembers(familyId);
+            setFamilyMembers(members);
         } catch (error) {
             console.error('Error loading family members:', error);
         } finally {
@@ -173,8 +169,8 @@ export const RecurrenceConfig: React.FC<RecurrenceConfigProps> = ({ value, onCha
                             key={day.value}
                             onClick={() => toggleDay(day.value)}
                             className={`px-2 py-1 text-xs rounded ${selectedDays.includes(day.value)
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                                 }`}
                         >
                             {day.label}

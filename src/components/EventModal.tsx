@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Calendar, Clock, Users, Tag, FileText } from 'lucide-react';
 import { api } from '../services/auth';
 import { FamilyMemberSelector } from './FamilyMemberSelector';
+import { RecurrenceSelector } from './RecurrenceSelector';
 
 interface EventModalProps {
     isOpen: boolean;
@@ -21,6 +22,12 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onEvent
     );
     const [category, setCategory] = useState('personal');
     const [assignedTo, setAssignedTo] = useState<number | null>(null);
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [recurrencePattern, setRecurrencePattern] = useState({
+        frequency: 'weekly' as const,
+        interval: 1,
+        daysOfWeek: [] as number[],
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -45,7 +52,8 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onEvent
                 start_time: new Date(startDate).toISOString(),
                 end_time: new Date(endDate).toISOString(),
                 category,
-                is_recurring: false,
+                is_recurring: isRecurring,
+                recurrence_pattern: isRecurring ? JSON.stringify(recurrencePattern) : null,
                 assigned_to_id: assignedTo,
             });
 
@@ -63,6 +71,12 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onEvent
         setDescription('');
         setCategory('personal');
         setAssignedTo(null);
+        setIsRecurring(false);
+        setRecurrencePattern({
+            frequency: 'weekly',
+            interval: 1,
+            daysOfWeek: [],
+        });
         setError('');
         onClose();
     };
@@ -186,6 +200,16 @@ export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onEvent
                         <FamilyMemberSelector
                             selectedMemberId={assignedTo}
                             onSelectMember={setAssignedTo}
+                        />
+                    </div>
+
+                    {/* Recurrencia */}
+                    <div>
+                        <RecurrenceSelector
+                            isRecurring={isRecurring}
+                            onToggleRecurring={setIsRecurring}
+                            pattern={recurrencePattern}
+                            onPatternChange={setRecurrencePattern}
                         />
                     </div>
 

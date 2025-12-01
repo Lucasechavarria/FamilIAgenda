@@ -104,6 +104,14 @@ export const calendarService = {
   },
 
   /**
+   * Obtiene los miembros de la familia.
+   */
+  getFamilyMembers: async (familyId: number): Promise<import('../types').User[]> => {
+    const response = await api.get(`/families/${familyId}/members`);
+    return response.data;
+  },
+
+  /**
    * Registra el token de notificaciones del dispositivo.
    */
   registerNotificationToken: async (token: string, userId: string) => {

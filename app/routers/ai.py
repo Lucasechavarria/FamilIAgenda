@@ -13,15 +13,25 @@ groq_key = os.getenv("GROQ_API_KEY")
 gemini_key = os.getenv("GEMINI_API_KEY")
 
 AI_PROVIDER = None
+groq_client = None
+
 if groq_key:
     try:
+        # Eliminar variables de proxy que pueden causar errores en la inicialización de Groq en Render
+        # Render a veces inyecta proxies que la librería de Groq/httpx no maneja bien por defecto
+        if "http_proxy" in os.environ:
+            del os.environ["http_proxy"]
+        if "https_proxy" in os.environ:
+            del os.environ["https_proxy"]
+            
         from groq import Groq
         groq_client = Groq(api_key=groq_key)
         AI_PROVIDER = "groq"
         print("✅ Usando Groq AI (gratis y rápido)")
-    except ImportError:
-        print("⚠️ Groq no instalado. Instala con: pip install groq")
-        
+    except Exception as e:
+        print(f"⚠️ Error al inicializar Groq: {e}")
+        # Si falla Groq, intentamos seguir para ver si Gemini funciona
+
 if not AI_PROVIDER and gemini_key:
     try:
         import google.generativeai as genai
@@ -43,6 +53,9 @@ router = APIRouter()
 
 def call_groq_ai(prompt: str) -> str:
     """Llama a Groq AI (gratis y muy rápido)"""
+    if not groq_client:
+        raise RuntimeError("Groq client no está disponible")
+        
     chat_completion = groq_client.chat.completions.create(
         messages=[
             {
@@ -105,7 +118,7 @@ async def procesar_texto_ia(prompt: PromptUsuario):
         
     except json.JSONDecodeError as e:
         print(f"❌ Error parseando JSON: {str(e)}")
-        print(f"   Texto recibido: {texto_limpio}")
+        # print(f"   Texto recibido: {texto_limpio}") # texto_limpio might not be defined if error happens before
         raise HTTPException(status_code=500, detail=f"La IA no devolvió un JSON válido: {str(e)}")
     except Exception as e:
         print(f"❌ Error general en IA: {type(e).__name__}: {str(e)}")
@@ -218,4 +231,174 @@ async def analyze_routine(
         texto_limpio = response_text.replace("```json", "").replace("```", "").strip()
         return json.loads(texto_limpio)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al analizar rutinas: {str(e)}")
+
+
+@router.post("/sugerir-eventos", summary="Sugiere eventos basados en texto natural")
+async def suggest_events_from_text(
+    prompt: PromptUsuario,
+    session: Session = Depends(get_session),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    Usa IA para sugerir múltiples eventos basados en texto natural del usuario.
+    Ejemplo: "Necesito organizar una reunión de equipo la próxima semana"
+    """
+    if not AI_PROVIDER:
+        raise HTTPException(
+            status_code=503,
+            detail="No hay ninguna API de IA configurada. Configura GROQ_API_KEY o GEMINI_API_KEY."
+        )
+    
+    try:
+        ahora = datetime.now().isoformat()
+        system_prompt = f"""
+        Actúa como un asistente de calendario experto. La fecha y hora actual es: {ahora}.
+        El usuario dice: "{prompt.texto}"
+        
+        Tu tarea es sugerir eventos apropiados en formato JSON array.
+        Cada evento debe tener: title, start_time, end_time, category, description.
+        
+        Categorías válidas: work, personal, family, health, education, other.
+        
+        IMPORTANTE: Devuelve SOLO un array JSON, sin markdown ni explicaciones.
+        Ejemplo: [{{"title": "...", "start_time": "2025-12-01T10:00:00", ...}}]
+        """
+        
+        if AI_PROVIDER == "groq":
+            response_text = call_groq_ai(system_prompt)
+        else:
+            response_text = call_gemini_ai(system_prompt)
+        
+        # Limpiar respuesta
+        texto_limpio = response_text.replace("```json", "").replace("```", "").strip()
+        eventos = json.loads(texto_limpio)
+        
+        # Asegurar que es un array
+        if not isinstance(eventos, list):
+            eventos = [eventos]
+        
+        return {
+            "eventos": eventos,
+            "count": len(eventos),
+            "provider": AI_PROVIDER
+        }
+        
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"La IA no devolvió un JSON válido: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al procesar con IA: {str(e)}"
+        )
+
+
+@router.post("/optimizar-calendario", summary="Optimiza el calendario usando IA")
+async def optimize_schedule(
+    prompt: PromptUsuario,
+    session: Session = Depends(get_session),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    Usa IA para analizar el calendario actual y sugerir optimizaciones.
+    Ejemplo: "Optimiza mi calendario de esta semana para tener más tiempo libre"
+    """
+    if not AI_PROVIDER:
+        raise HTTPException(
+            status_code=503,
+            detail="No hay ninguna API de IA configurada. Configura GROQ_API_KEY o GEMINI_API_KEY."
+        )
+    
+    try:
+        # Obtener eventos del usuario de la próxima semana
+        ahora = datetime.now()
+        una_semana = ahora + timedelta(days=7)
+        
+        # Obtener family_id del usuario
+        member = session.exec(
+            select(FamilyMember).where(FamilyMember.user_id == user_id)
+        ).first()
+        
+        if not member:
+            raise HTTPException(
+                status_code=404,
+                detail="Usuario no pertenece a ninguna familia"
+            )
+        
+        # Obtener eventos
+        events_query = select(Event).where(
+            or_(
+                Event.owner_id == user_id,
+                Event.family_id == member.family_id
+            ),
+            Event.start_time >= ahora,
+            Event.start_time <= una_semana
+        )
+        eventos = session.exec(events_query).all()
+        
+        # Convertir eventos a formato simple para la IA
+        eventos_data = [
+            {
+                "id": e.id,
+                "title": e.title,
+                "start_time": e.start_time.isoformat(),
+                "end_time": e.end_time.isoformat(),
+                "category": e.category
+            }
+            for e in eventos
+        ]
+        
+        system_prompt = f"""
+        Actúa como un experto en productividad y gestión del tiempo.
+        Fecha actual: {ahora.isoformat()}
+        
+        El usuario tiene estos eventos programados:
+        {json.dumps(eventos_data, indent=2)}
+        
+        El usuario solicita: "{prompt.texto}"
+        
+        Analiza el calendario y sugiere optimizaciones en formato JSON:
+        {{
+            "analisis": "breve análisis del calendario actual",
+            "sugerencias": [
+                {{
+                    "event_id": 123,
+                    "accion": "mover|eliminar|combinar",
+                    "razon": "explicación",
+                    "nuevo_horario": "2025-12-01T14:00:00" (si aplica)
+                }}
+            ],
+            "tiempo_libre_ganado": "X horas"
+        }}
+        
+        IMPORTANTE: Devuelve SOLO JSON, sin markdown.
+        """
+        
+        if AI_PROVIDER == "groq":
+            response_text = call_groq_ai(system_prompt)
+        else:
+            response_text = call_gemini_ai(system_prompt)
+        
+        # Limpiar respuesta
+        texto_limpio = response_text.replace("```json", "").replace("```", "").strip()
+        optimizacion = json.loads(texto_limpio)
+        
+        return {
+            "optimizacion": optimizacion,
+            "eventos_analizados": len(eventos),
+            "provider": AI_PROVIDER
+        }
+        
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"La IA no devolvió un JSON válido: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al optimizar calendario: {str(e)}"
+        )
