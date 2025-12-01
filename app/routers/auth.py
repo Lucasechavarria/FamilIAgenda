@@ -92,6 +92,10 @@ async def login(user: UserLogin, session: Session = Depends(get_session)):
         "user_email": db_user.email
     }
 
+@router.post("/token/", include_in_schema=False)
+async def login_slash(user: UserLogin, session: Session = Depends(get_session)):
+    return await login(user, session)
+
 @router.get("/familia/miembros")
 async def get_family_members(
     session: Session = Depends(get_session),
