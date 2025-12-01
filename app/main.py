@@ -1,19 +1,22 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from contextlib import asynccontextmanager
- 
+from starlette.middleware.base import BaseHTTPMiddleware
+import time
+import asyncio
+
 from sqlmodel import Session, select
-from .database import create_db_and_tables, engine
+from .database import create_db_and_tables, engine, SessionLocal
 from .models import User, Family, FamilyMember, Event, Task, ChatMessage, NotificationLog, NotificationToken, EventShare, TaskAssignmentHistory
 from .security import get_password_hash
 from .notification_service import initialize_firebase_app
 from .routers import auth, ai, notifications, events, tasks, sharing, chat, metrics
-
-import asyncio
 from apscheduler.schedulers.background import BackgroundScheduler
 from .services.background_tasks import check_upcoming_tasks
 from .services.notification_scheduler import process_pending_notifications
-from .database import SessionLocal
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -114,12 +117,6 @@ app.add_middleware(
 )
 
 # Middleware de Logging
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-import time
-
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
@@ -136,9 +133,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 app.add_middleware(LoggingMiddleware)
 
 # Exception Handler para 422
-# Exception Handler para 422
-from fastapi.encoders import jsonable_encoder
-
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     print(f"❌  VALIDATION ERROR: {exc.errors()}")
