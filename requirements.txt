@@ -21,7 +21,7 @@ google-generativeai==0.8.3
 google-auth-oauthlib==1.2.1
 google-auth-httplib2==0.2.0
 google-api-python-client==2.154.0
-groq==0.11.0  # Alternativa gratuita y rápida a Gemini
+groq>=0.13.0  # Alternativa gratuita y rápida a Gemini
 
 
 # Firebase (Notifications)

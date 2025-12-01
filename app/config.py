@@ -23,7 +23,7 @@ class ProductionConfig:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
     
     # AI
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     
     # CORS - Update with your frontend domain
     ALLOWED_ORIGINS: list = [

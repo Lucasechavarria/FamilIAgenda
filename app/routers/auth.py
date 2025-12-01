@@ -70,6 +70,10 @@ async def register(user: UserRegister, session: Session = Depends(get_session)):
         "user_email": db_user.email
     }
 
+@router.post("/register/", include_in_schema=False)
+async def register_slash(user: UserRegister, session: Session = Depends(get_session)):
+    return await register(user, session)
+
 @router.post("/token")
 async def login(user: UserLogin, session: Session = Depends(get_session)):
     # Buscar usuario
