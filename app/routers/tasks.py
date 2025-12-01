@@ -35,10 +35,12 @@ def create_task(
         if not assigned_member:
              raise HTTPException(status_code=400, detail="El usuario asignado no pertenece a tu familia")
 
-    db_task = Task.model_validate(task)
-    db_task.family_id = family_id
-    db_task.created_by_id = user_id
-    db_task.status = "pending"
+    task_data = task.model_dump()
+    task_data["family_id"] = family_id
+    task_data["created_by_id"] = user_id
+    task_data["status"] = "pending"
+    
+    db_task = Task.model_validate(task_data)
     
     session.add(db_task)
     session.commit()

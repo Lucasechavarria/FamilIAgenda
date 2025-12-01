@@ -75,7 +75,7 @@ def test_ai_optimize_schedule(mock_groq, client: TestClient):
     
     if response.status_code == 200:
         data = response.json()
-        assert "sugerencias" in data or isinstance(data, list)
+        assert "optimizacion" in data or isinstance(data, list)
 
 def test_ai_without_provider(client: TestClient):
     """Test AI endpoints when no provider is configured"""

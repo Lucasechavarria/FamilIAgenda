@@ -54,7 +54,8 @@ def test_metrics_calculation(mock_handle, mock_schedule, client: TestClient, ses
         headers=headers,
         json={}  # El backend usa current_user si no se especifica
     )
-    assert complete_res.status_code == 200
+
+    assert complete_res.status_code == 200, f"Error completing event: {complete_res.text}"
     
     # Evento 2: Pendiente
     res_event2 = client.post(

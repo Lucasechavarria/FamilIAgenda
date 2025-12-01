@@ -31,7 +31,7 @@ def test_get_chat_history(client: TestClient, session: Session):
     msg = ChatMessage(
         family_id=family_id,
         user_id=user.id,
-        message="Hello History",
+        content="Hello History",
         created_at=datetime.utcnow()
     )
     session.add(msg)
@@ -47,7 +47,7 @@ def test_get_chat_history(client: TestClient, session: Session):
     # Verificar contenido del mensaje
     found_message = False
     for message in data:
-        if message.get("message") == "Hello History":
+        if message.get("content") == "Hello History":
             found_message = True
             assert message["user_name"] == "Chat User"
             break

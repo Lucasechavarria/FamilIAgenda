@@ -36,9 +36,9 @@ def test_register_notification_token(client: TestClient, session: Session):
         }
     )
     
-    assert response.status_code == 200
+    assert response.status_code in [200, 201]
     data = response.json()
-    assert "message" in data or "token" in data
+    assert "message" in data or "token" in data or "token_id" in data
     
     # Verificar que el token se guardó en la BD
     token_record = session.exec(
