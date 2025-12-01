@@ -47,8 +47,8 @@ export const api = axios;
 export const authService = {
     api: axios,
     async register(data: RegisterData): Promise<LoginResponse> {
-        console.log(`Intentando registrar en: ${API_URL}/register/`);
-        const response = await axios.post<LoginResponse>(`${API_URL}/register/`, data);
+        console.log(`Intentando registrar en: ${API_URL}/register`);
+        const response = await axios.post<LoginResponse>(`${API_URL}/register`, data);
         if (response.data.access_token) {
             localStorage.setItem('access_token', response.data.access_token);
         }
@@ -56,8 +56,8 @@ export const authService = {
     },
 
     async login(data: LoginData): Promise<LoginResponse> {
-        console.log(`Intentando login en: ${API_URL}/token/`);
-        const response = await axios.post<LoginResponse>(`${API_URL}/token/`, data);
+        console.log(`Intentando login en: ${API_URL}/token`);
+        const response = await axios.post<LoginResponse>(`${API_URL}/token`, data);
         if (response.data.access_token) {
             localStorage.setItem('access_token', response.data.access_token);
         }
