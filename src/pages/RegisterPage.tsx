@@ -99,7 +99,7 @@ export default function RegisterPage() {
                                     value={fullName}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
                                     className="input-field pl-10"
-                                    style={{ color: '#0f172a' }}
+                                    style={{ color: '#f8fafc' }}
                                     placeholder="Juan Pérez"
                                     required
                                 />
@@ -117,7 +117,7 @@ export default function RegisterPage() {
                                     value={email}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                                     className="input-field pl-10"
-                                    style={{ color: '#0f172a' }}
+                                    style={{ color: '#f8fafc' }}
                                     placeholder="tu@email.com"
                                     required
                                     autoComplete="email"
@@ -136,7 +136,7 @@ export default function RegisterPage() {
                                     value={password}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                                     className="input-field pl-10 pr-12"
-                                    style={{ color: '#0f172a' }}
+                                    style={{ color: '#f8fafc' }}
                                     placeholder="••••••••"
                                     required
                                     autoComplete="new-password"
@@ -166,7 +166,7 @@ export default function RegisterPage() {
                                     value={confirmPassword}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                                     className="input-field pl-10 pr-12"
-                                    style={{ color: '#0f172a' }}
+                                    style={{ color: '#f8fafc' }}
                                     placeholder="••••••••"
                                     required
                                     autoComplete="new-password"
@@ -221,7 +221,7 @@ export default function RegisterPage() {
                                         value={familyName}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFamilyName(e.target.value)}
                                         className="input-field"
-                                        style={{ color: '#0f172a' }}
+                                        style={{ color: '#f8fafc' }}
                                         placeholder="Familia Pérez"
                                         required
                                     />
@@ -236,7 +236,7 @@ export default function RegisterPage() {
                                         value={invitationCode}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInvitationCode(e.target.value.toUpperCase())}
                                         className="input-field"
-                                        style={{ color: '#0f172a' }}
+                                        style={{ color: '#f8fafc' }}
                                         placeholder="ABC123"
                                         required
                                         maxLength={6}
