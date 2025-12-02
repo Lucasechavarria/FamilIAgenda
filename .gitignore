@@ -80,3 +80,7 @@ serviceAccountKey.json
 
 # Artifacts (Gemini workspace)
 .gemini/
+
+# Migration scripts (already executed in production)
+*_migration.sql
+migrations/
