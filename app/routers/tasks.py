@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select, or_
 
@@ -111,7 +111,7 @@ def complete_task(
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
         
     db_task.status = "completed"
-    db_task.completed_at = datetime.utcnow()
+    db_task.completed_at = datetime.now(timezone.utc)
     db_task.completed_by_id = user_id
     
     session.add(db_task)

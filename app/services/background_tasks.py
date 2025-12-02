@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
 from ..database import engine
 from ..models import Task
@@ -15,7 +15,7 @@ async def check_upcoming_tasks():
     while True:
         try:
             with Session(engine) as session:
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 # Buscar tareas pendientes que venzan en la próxima hora
                 # (Simplificación: en prod buscaríamos rangos específicos para no repetir alertas)
                 

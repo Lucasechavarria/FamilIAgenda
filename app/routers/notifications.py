@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..database import get_session
 from ..models import NotificationToken, NotificationLog, User
@@ -126,7 +126,7 @@ def send_test_notification(
                     token=token.token,
                     title="🔔 Notificación de Prueba",
                     body=f"Hola {user.full_name}! Tu sistema de notificaciones funciona correctamente.",
-                    data={"type": "test", "timestamp": datetime.utcnow().isoformat()}
+                    data={"type": "test", "timestamp": datetime.now(timezone.utc).isoformat()}
                 )
                 sent_count += 1
             except Exception as e:

@@ -1,13 +1,13 @@
 from typing import List, Optional
 from sqlmodel import Field, SQLModel, Relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Tabla intermedia para relación N:M entre User y Family
 class FamilyMember(SQLModel, table=True):
     family_id: Optional[int] = Field(default=None, foreign_key="family.id", primary_key=True)
     user_id: Optional[int] = Field(default=None, foreign_key="user.id", primary_key=True)
     role: str = Field(default="member")  # admin, moderator, member
-    joined_at: datetime = Field(default_factory=datetime.utcnow)
+    joined_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -16,7 +16,7 @@ class User(SQLModel, table=True):
     hashed_password: str
     avatar_url: Optional[str] = None
     color: str = Field(default="#3B82F6")  # Color personal para identificación visual
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Relaciones
     families: List["Family"] = Relationship(back_populates="members", link_model=FamilyMember)
@@ -39,7 +39,7 @@ class Family(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     invitation_code: str = Field(unique=True, index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Relaciones
     members: List[User] = Relationship(back_populates="families", link_model=FamilyMember)
@@ -95,7 +95,7 @@ class EventShare(SQLModel, table=True):
     event_id: int = Field(foreign_key="event.id")
     shared_with_user_id: int = Field(foreign_key="user.id")
     can_edit: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relaciones
     event: Event = Relationship(back_populates="shared_with")
@@ -113,7 +113,7 @@ class NotificationLog(SQLModel, table=True):
     status: str = Field(default="pending")  # pending, sent, failed
     notification_type: str  # "pre_event", "recurring_reminder", "multi_stage"
     stage: Optional[int] = None  # Para notificaciones multi-etapa (30d, 15d, etc.)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relaciones
     event: Event = Relationship(back_populates="notification_logs")
@@ -124,7 +124,7 @@ class TaskAssignmentHistory(SQLModel, table=True):
     event_id: int = Field(foreign_key="event.id")
     from_user_id: Optional[int] = Field(default=None, foreign_key="user.id")
     to_user_id: int = Field(foreign_key="user.id")
-    reassigned_at: datetime = Field(default_factory=datetime.utcnow)
+    reassigned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     reason: Optional[str] = None
 
 class NotificationToken(SQLModel, table=True):
@@ -133,7 +133,7 @@ class NotificationToken(SQLModel, table=True):
     token: str = Field(unique=True)
     device_type: str = Field(default="web")  # 'web', 'android', 'ios'
     device_info: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relaciones
     user: User = Relationship(back_populates="notification_tokens")
@@ -148,7 +148,7 @@ class Task(SQLModel, table=True):
     assigned_to_id: Optional[int] = Field(default=None, foreign_key="user.id")
     family_id: int = Field(foreign_key="family.id")
     created_by_id: int = Field(foreign_key="user.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
     completed_by_id: Optional[int] = Field(default=None, foreign_key="user.id")
     
@@ -161,4 +161,4 @@ class ChatMessage(SQLModel, table=True):
     family_id: int = Field(foreign_key="family.id")
     user_id: int = Field(foreign_key="user.id")
     content: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
