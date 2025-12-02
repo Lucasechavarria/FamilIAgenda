@@ -57,7 +57,18 @@ export const authService = {
 
     async login(data: LoginData): Promise<LoginResponse> {
         console.log(`Intentando login en: ${API_URL}/token`);
-        const response = await axios.post<LoginResponse>(`${API_URL}/token`, data);
+
+        // El endpoint /token espera application/x-www-form-urlencoded (estándar OAuth2)
+        const formData = new URLSearchParams();
+        formData.append('email', data.email);
+        formData.append('password', data.password);
+
+        const response = await axios.post<LoginResponse>(`${API_URL}/token`, formData, {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
+
         if (response.data.access_token) {
             localStorage.setItem('access_token', response.data.access_token);
         }
