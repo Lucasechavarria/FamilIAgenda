@@ -26,6 +26,39 @@ def create_db_and_tables():
     # En producción con Supabase, las tablas ya deberían existir por el script SQL.
     # SQLModel solo creará las que falten, pero es mejor confiar en las migraciones/scripts SQL.
     SQLModel.metadata.create_all(engine)
+    migrate_db_schema()
+
+def migrate_db_schema():
+    """
+    Función simple de migración para agregar columnas faltantes en producción.
+    Esto es necesario porque SQLModel.metadata.create_all no altera tablas existentes.
+    """
+    from sqlalchemy import text
+    
+    with Session(engine) as session:
+        try:
+            # 1. Tabla User: agregar 'color'
+            session.exec(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS color VARCHAR DEFAULT '#3B82F6'"))
+            
+            # 2. Tabla NotificationLog: agregar 'title', 'body', 'status'
+            session.exec(text("ALTER TABLE notificationlog ADD COLUMN IF NOT EXISTS title VARCHAR DEFAULT 'Notificación'"))
+            session.exec(text("ALTER TABLE notificationlog ADD COLUMN IF NOT EXISTS body VARCHAR DEFAULT ''"))
+            session.exec(text("ALTER TABLE notificationlog ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'pending'"))
+            
+            # 3. Tabla Task: agregar 'created_by_id', 'completed_by_id'
+            # Nota: created_by_id es NOT NULL en el modelo, pero al agregarla a tabla existente debe permitir NULL o tener default
+            # Aquí permitimos NULL temporalmente para no romper datos existentes
+            session.exec(text("ALTER TABLE task ADD COLUMN IF NOT EXISTS created_by_id INTEGER REFERENCES \"user\"(id)"))
+            session.exec(text("ALTER TABLE task ADD COLUMN IF NOT EXISTS completed_by_id INTEGER REFERENCES \"user\"(id)"))
+            
+            # 4. Tabla NotificationToken: agregar 'device_info'
+            session.exec(text("ALTER TABLE notificationtoken ADD COLUMN IF NOT EXISTS device_info VARCHAR"))
+            
+            session.commit()
+            print("✅ Schema migration completed successfully")
+        except Exception as e:
+            print(f"⚠️ Schema migration failed (might be already applied): {e}")
+            session.rollback()
 
 def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
