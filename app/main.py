@@ -96,26 +96,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configurar CORS - Permitir todos los subdominios de Vercel
-origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8000",
-    "https://famil-ia-genda.vercel.app",
-    "https://familia-ia-genda.vercel.app",
-    "https://familiagenda-frontend.onrender.com",
-    "https://familiagenda-backend.onrender.com",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
-
 # Middleware de Logging
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -131,6 +111,25 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             raise
 
 app.add_middleware(LoggingMiddleware)
+
+# Configurar CORS - Permitir todos los subdominios de Vercel y Render
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8000",
+    "https://familiagenda-frontend.onrender.com",
+    "https://familiagenda-backend.onrender.com",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_origin_regex="https://.*\.vercel\.app",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 # Exception Handler para 422
 @app.exception_handler(RequestValidationError)
