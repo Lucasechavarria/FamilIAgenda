@@ -2,7 +2,7 @@
 Servicio de programación y envío de notificaciones.
 Maneja la lógica de notificaciones multi-etapa, recurrentes y asignaciones.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 import json
 from sqlmodel import Session, select
@@ -141,7 +141,7 @@ def process_pending_notifications(session: Session):
     Revisa NotificationLog y envía las notificaciones que ya deben enviarse.
     Debe ejecutarse periódicamente (cada 5 minutos).
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     # Buscar notificaciones pendientes
     pending = session.exec(
@@ -176,7 +176,7 @@ def process_pending_notifications(session: Session):
             send_notification_to_user(session, notif_log.user_id, title, body)
             
             # Marcar como enviada
-            notif_log.sent_at = datetime.utcnow()
+            notif_log.sent_at = datetime.now(timezone.utc)
             session.add(notif_log)
             
         except Exception as e:

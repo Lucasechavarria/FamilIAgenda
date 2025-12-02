@@ -7,7 +7,7 @@ from ..models import Event, FamilyMember, TaskAssignmentHistory, NotificationLog
 from ..schemas import EventCreate, EventRead, EventUpdate
 from ..security import get_current_user_id
 from ..services.notification_scheduler import schedule_notifications_for_event, handle_recurring_event_completion
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -291,7 +291,7 @@ def complete_event(
     
     # Marcar como completado
     db_event.status = "completed"
-    db_event.completed_at = datetime.utcnow()
+    db_event.completed_at = datetime.now(timezone.utc)
     db_event.completed_by_id = (request.completed_by_id if request else None) or user_id
     
     session.add(db_event)

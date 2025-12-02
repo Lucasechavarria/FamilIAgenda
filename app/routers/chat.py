@@ -1,7 +1,7 @@
 from typing import List, Dict
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from sqlmodel import Session, select
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 from ..database import get_session
@@ -49,7 +49,7 @@ async def websocket_endpoint(
                     family_id=family_id,
                     user_id=user_id,
                     content=content,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
                 session.add(new_message)
                 session.commit()

@@ -2,7 +2,7 @@
 Servicio de recordatorios inteligentes usando IA.
 Analiza patrones de eventos y sugiere recordatorios óptimos.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List
 from sqlmodel import Session, select
 from ..models import Event, User, NotificationToken
@@ -35,7 +35,7 @@ def calculate_smart_reminder_time(event: Event) -> List[datetime]:
     for delta in deltas:
         reminder_time = event_start - delta
         # Solo añadir si es en el futuro
-        if reminder_time > datetime.utcnow():
+        if reminder_time > datetime.now(timezone.utc):
             reminders.append(reminder_time)
     
     return reminders
@@ -48,13 +48,13 @@ def analyze_productivity_patterns(session: Session, user_id: int) -> Dict[str, a
     - Categorías más frecuentes
     """
     # Obtener eventos de los últimos 30 días
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     
     events = session.exec(
         select(Event)
         .where(Event.owner_id == user_id)
         .where(Event.start_time >= thirty_days_ago)
-        .where(Event.start_time <= datetime.utcnow())
+        .where(Event.start_time <= datetime.now(timezone.utc))
     ).all()
     
     if not events:
@@ -107,7 +107,7 @@ def send_smart_reminder(session: Session, event: Event):
     title = f"Recordatorio: {event.title}"
     
     # Calcular tiempo hasta el evento
-    time_until = event.start_time - datetime.utcnow()
+    time_until = event.start_time - datetime.now(timezone.utc)
     hours = int(time_until.total_seconds() / 3600)
     minutes = int((time_until.total_seconds() % 3600) / 60)
     
