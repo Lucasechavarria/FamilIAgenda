@@ -76,7 +76,8 @@
 
 @layer base {
   body {
-    @apply bg-background text-slate-300 antialiased selection:bg-primary-500 selection:text-white overflow-x-hidden;
+    background-color: var(--color-background);
+    @apply text-slate-300 antialiased selection:bg-primary-500 selection:text-white overflow-x-hidden;
     background-image:
       radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.15) 0%, transparent 50%),
       radial-gradient(circle at 0% 50%, rgba(217, 70, 239, 0.1) 0%, transparent 40%);
@@ -147,7 +148,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-background;
+  background-color: var(--color-background);
 }
 
 ::-webkit-scrollbar-thumb {
