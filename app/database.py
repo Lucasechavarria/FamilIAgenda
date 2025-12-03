@@ -20,7 +20,12 @@ elif "pgbouncer=true" in DATABASE_URL:
     # Connection Pooler requiere prepared statements deshabilitados
     connect_args["prepare_threshold"] = 0
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
+engine = create_engine(
+    DATABASE_URL, 
+    connect_args=connect_args, 
+    pool_pre_ping=True,
+    pool_recycle=3600  # Reciclar conexiones cada hora para evitar timeouts de Supabase
+)
 
 def create_db_and_tables():
     # En producción con Supabase, las tablas ya deberían existir por el script SQL.
