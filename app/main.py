@@ -124,7 +124,7 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex="https://.*\.vercel\.app",
+    allow_origin_regex=r"https://.*\.vercel\.app",  # Raw string para evitar warning
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

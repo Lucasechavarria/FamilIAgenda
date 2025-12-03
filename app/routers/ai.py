@@ -67,7 +67,7 @@ def call_groq_ai(prompt: str) -> str:
                 "content": prompt
             }
         ],
-        model="llama-3.1-70b-versatile",  # Modelo gratis y potente
+        model="llama-3.3-70b-versatile",  # Modelo actualizado (reemplaza llama-3.1-70b-versatile descontinuado)
         temperature=0.3,
         max_tokens=1024,
     )
