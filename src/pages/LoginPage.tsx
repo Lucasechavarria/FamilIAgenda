@@ -25,7 +25,8 @@ export default function LoginPage() {
             authLogin(response.user_name, response.user_email);
             navigate('/');
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Error al iniciar sesión');
+            // El error lanzado por authService ya es un string amigable
+            setError(err.message || 'Error al iniciar sesión');
         } finally {
             setLoading(false);
         }

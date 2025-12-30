@@ -47,14 +47,14 @@ export default function RegisterPage() {
                 email,
                 full_name: fullName,
                 password,
-                create_family_name: createFamily ? familyName : undefined,
-                join_family_code: !createFamily ? invitationCode : undefined,
+                family_name: createFamily ? familyName : undefined,
+                // Si el backend se actualiza para aceptar invitationCode, se añadiría aquí
             });
 
             login(response.user_name, response.user_email);
             navigate('/');
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Error al registrarse');
+            setError(err.message || 'Error al registrarse');
         } finally {
             setLoading(false);
         }

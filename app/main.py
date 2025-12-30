@@ -112,19 +112,20 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(LoggingMiddleware)
 
-# Configurar CORS - Permitir todos los subdominios de Vercel y Render
+# Configurar CORS - Permitir dominios específicos
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:8000",
     "https://familiagenda-frontend.onrender.com",
     "https://familiagenda-backend.onrender.com",
+    "https://famil-ia-genda.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",  # Raw string para evitar warning
+    allow_origin_regex=r"https://familiagenda-.*\.vercel\.app", 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -145,7 +146,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     print(f"    Body: {body}")
     return JSONResponse(
         status_code=422,
-        content={"detail": jsonable_encoder(exc.errors()), "body": body},
+        content={
+            "detail": jsonable_encoder(exc.errors()), 
+            "message": "Error de validación en los datos enviados",
+            "body": body
+        },
     )
 
 # Ruta raíz

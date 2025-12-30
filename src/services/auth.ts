@@ -24,7 +24,7 @@ export interface RegisterData {
     email: string;
     full_name: string;
     password: string;
-    create_family_name?: string;
+    family_name?: string;
     join_family_code?: string;
 }
 
@@ -58,21 +58,30 @@ export const authService = {
     async login(data: LoginData): Promise<LoginResponse> {
         console.log(`Intentando login en: ${API_URL}/token`);
 
-        // El endpoint /token espera application/x-www-form-urlencoded (estándar OAuth2)
-        const formData = new URLSearchParams();
-        formData.append('email', data.email);
-        formData.append('password', data.password);
+        try {
+            // El backend acepta JSON si lo configuramos correctamente o si usamos el router de auth estándar
+            // Cambiamos a JSON para evitar el error 422 si el backend espera un objeto
+            const response = await axios.post<LoginResponse>(`${API_URL}/token`, data);
 
-        const response = await axios.post<LoginResponse>(`${API_URL}/token`, formData, {
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+            if (response.data.access_token) {
+                localStorage.setItem('access_token', response.data.access_token);
+                // También guardar datos básicos del usuario
+                localStorage.setItem('user', JSON.stringify({
+                    name: response.data.user_name,
+                    email: response.data.user_email
+                }));
             }
-        });
-
-        if (response.data.access_token) {
-            localStorage.setItem('access_token', response.data.access_token);
+            return response.data;
+        } catch (error: any) {
+            console.error("Error en login:", error.response?.data || error.message);
+            // Lanzamos un error amigable en lugar del objeto circular que causa el Error #31
+            const errorMessage = error.response?.data?.detail
+                ? (typeof error.response.data.detail === 'string'
+                    ? error.response.data.detail
+                    : JSON.stringify(error.response.data.detail))
+                : (error.response?.data?.message || "Error al iniciar sesión");
+            throw new Error(errorMessage);
         }
-        return response.data;
     },
 
     logout() {
