@@ -7,7 +7,7 @@ import { calendarService } from '../services/api';
 import { FamilyMemberSelector } from './FamilyMemberSelector';
 import { RecurrenceSelector } from './RecurrenceSelector';
 import { cn } from '../lib/cn';
-import { UXFeedback } from '@/lib/MicroInteractions';
+import { UXFeedback } from '@/lib/UXInteractions';
 import type { EventCategory, RecurrencePattern, CalendarEvent } from '../types';
 
 // ------------------------------------------------------------------

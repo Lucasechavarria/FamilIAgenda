@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Send, Sparkles, Check, X, Loader2, Calendar, Clock, Tag, ArrowRight } from 'lucide-react';
 import { calendarService } from '../services/api';
 import { AIEventProposal } from '../types';
-import { UXFeedback } from '@/lib/MicroInteractions';
+import { UXFeedback } from '@/lib/UXInteractions';
 
 interface AIInputProps {
   onEventCreated: () => void;

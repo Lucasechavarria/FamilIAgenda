@@ -3,7 +3,7 @@ import { Sparkles, X, ArrowRight, Calendar, Trash2, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AIOptimizationResponse, AISuggestion } from '../types';
 import { cn } from '../lib/cn';
-import { UXFeedback } from '@/lib/MicroInteractions';
+import { UXFeedback } from '@/lib/UXInteractions';
 
 interface AICompanionPanelProps {
     data: AIOptimizationResponse;
