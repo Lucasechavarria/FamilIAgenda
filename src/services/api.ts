@@ -16,6 +16,22 @@ const api = axios.create({
   },
 });
 
+// Interceptor para inyectar el token de autenticación automáticamente
+api.interceptors.request.use((config) => {
+  const userStr = localStorage.getItem('user');
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      if (user.token) {
+        config.headers.Authorization = `Bearer ${user.token}`;
+      }
+    } catch (e) {
+      console.error("Error al leer token para Axios:", e);
+    }
+  }
+  return config;
+});
+
 // Helper to get current family ID from storage
 const getFamilyId = () => {
   const userStr = localStorage.getItem('user');
@@ -106,12 +122,22 @@ export const calendarService = {
     onError: (error: string) => void
   ) => {
     const baseUrl = getBaseUrl();
+    const userStr = localStorage.getItem('user');
+    let token = "";
+    
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        token = user.token || "";
+      } catch (e) {}
+    }
+
     try {
       const response = await fetch(`${baseUrl}/ai/interpretar-stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Agrega aquí cabeceras de Auth si fuera necesario (ej: Bearer TOKEN)
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ texto: textInput })
       });

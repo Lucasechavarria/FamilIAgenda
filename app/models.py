@@ -74,7 +74,7 @@ class Event(SQLModel, table=True):
     
     # Relaciones
     owner_id: int = Field(foreign_key="user.id")
-    family_id: int = Field(foreign_key="family.id")
+    family_id: Optional[int] = Field(default=None, foreign_key="family.id")
     owner: User = Relationship(
         back_populates="created_events",
         sa_relationship_kwargs={"foreign_keys": "[Event.owner_id]"}
