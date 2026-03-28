@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Send, Sparkles, Check, X, Loader2, Calendar, Clock, Tag, ArrowRight } from 'lucide-react';
 import { calendarService } from '../services/api';
 import { AIEventProposal } from '../types';
+import { UXFeedback } from '../lib/microInteractions';
 
 interface AIInputProps {
   onEventCreated: () => void;
@@ -12,8 +13,10 @@ export const AIInput: React.FC<AIInputProps> = ({ onEventCreated }) => {
   const [loading, setLoading] = useState(false);
   const [proposal, setProposal] = useState<AIEventProposal | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [streamingText, setStreamingText] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
 
-  // 1. Enviar el texto a la IA
+  // 1. Enviar el texto a la IA (Streaming)
   const handleInterpret = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim()) return;
@@ -21,15 +24,34 @@ export const AIInput: React.FC<AIInputProps> = ({ onEventCreated }) => {
     setLoading(true);
     setError(null);
     setProposal(null);
+    setStreamingText('');
+    setIsStreaming(true);
 
     try {
-      const result = await calendarService.interpretEvent(text);
-      setProposal(result);
+      UXFeedback.playSound('pop');
+      UXFeedback.vibrate('light');
+
+      await calendarService.interpretEventStream(
+        text,
+        (token) => {
+          setStreamingText(prev => prev + token);
+        },
+        (result) => {
+          setProposal(result);
+          setIsStreaming(false);
+          setLoading(false);
+        },
+        (errMsg) => {
+          setError(errMsg);
+          setIsStreaming(false);
+          setLoading(false);
+        }
+      );
     } catch (err) {
       console.error(err);
-      setError("No pude entender ese evento. Intenta ser más específico.");
-    } finally {
+      setError("No pude conectar con el asistente.");
       setLoading(false);
+      setIsStreaming(false);
     }
   };
 
@@ -40,15 +62,16 @@ export const AIInput: React.FC<AIInputProps> = ({ onEventCreated }) => {
     try {
       await calendarService.createEvent({
         title: proposal.titulo,
-        start_date: proposal.start_time,
-        end_date: proposal.end_time,
+        start_time: proposal.start_time,
+        end_time: proposal.end_time,
         category: proposal.category,
         description: proposal.descripcion,
-        family_id: 1
       });
 
       setProposal(null);
       setText('');
+      UXFeedback.playSound('success');
+      UXFeedback.vibrate('success');
       onEventCreated();
     } catch (err) {
       setError("Error al guardar el evento.");
@@ -96,38 +119,57 @@ export const AIInput: React.FC<AIInputProps> = ({ onEventCreated }) => {
       <div className="flex-1 flex flex-col relative">
         {!proposal ? (
           <form onSubmit={handleInterpret} className="relative flex-1 flex flex-col group">
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="¿Qué planeas hacer?..."
-              className="w-full h-40 p-5 bg-white dark:bg-slate-800 border-2 border-gray-100 dark:border-slate-700 rounded-2xl focus:border-primary-400 dark:focus:border-primary-500 focus:ring-4 focus:ring-primary-50 dark:focus:ring-primary-900/20 outline-none resize-none text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 shadow-sm transition-all duration-300 ease-out"
-              disabled={loading}
-            />
-            
-            {/* Botón flotante animado */}
-            <div className="absolute bottom-4 right-4">
-              <button 
-                type="submit" 
-                disabled={loading || !text.trim()}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 transform ${
-                  loading || !text.trim()
-                    ? 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-gray-500 translate-y-0' 
-                    : 'bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-primary-500/30 hover:-translate-y-1 hover:scale-105 active:scale-95'
-                }`}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Pensando...
-                  </>
-                ) : (
-                  <>
-                    Generar
-                    <Send size={16} />
-                  </>
-                )}
-              </button>
-            </div>
+            {isStreaming ? (
+              <div className="w-full h-40 p-6 bg-primary-50/30 dark:bg-slate-900/40 border-2 border-primary-200 dark:border-primary-900/50 rounded-2xl flex flex-col animate-in fade-in duration-500 overflow-hidden">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce"></div>
+                  <span className="text-[10px] uppercase font-black tracking-widest text-primary-600 dark:text-primary-400 ml-2">Asistente procesando</span>
+                </div>
+                <div className="text-sm text-gray-700 dark:text-gray-200 font-medium leading-relaxed italic line-clamp-4">
+                  "{streamingText || "Analizando tu mensaje..."}"
+                </div>
+                <div className="absolute bottom-4 right-4 text-xs font-bold text-primary-400 dark:text-primary-600 animate-pulse">
+                  Generando respuesta...
+                </div>
+              </div>
+            ) : (
+              <>
+                <textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="¿Qué planeas hacer?..."
+                  className="w-full h-40 p-5 bg-white dark:bg-slate-800 border-2 border-gray-100 dark:border-slate-700 rounded-2xl focus:border-primary-400 dark:focus:border-primary-500 focus:ring-4 focus:ring-primary-50 dark:focus:ring-primary-900/20 outline-none resize-none text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 shadow-sm transition-all duration-300 ease-out"
+                  disabled={loading}
+                />
+                
+                {/* Botón flotante animado */}
+                <div className="absolute bottom-4 right-4">
+                  <button 
+                    type="submit" 
+                    disabled={loading || !text.trim()}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 transform ${
+                      loading || !text.trim()
+                        ? 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-gray-500 translate-y-0' 
+                        : 'bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-primary-500/30 hover:-translate-y-1 hover:scale-105 active:scale-95'
+                    }`}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Interpretando...
+                      </>
+                    ) : (
+                      <>
+                        Generar
+                        <Send size={16} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </form>
         ) : (
           /* Tarjeta de Confirmación Mejorada */

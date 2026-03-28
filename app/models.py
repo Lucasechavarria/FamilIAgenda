@@ -32,8 +32,9 @@ class User(SQLModel, table=True):
         back_populates="completed_by",
         sa_relationship_kwargs={"foreign_keys": "[Event.completed_by_id]"}
     )
-    notification_tokens: List["NotificationToken"] = Relationship(back_populates="user")
     shared_events: List["EventShare"] = Relationship(back_populates="shared_with_user")
+    notification_tokens: List["NotificationToken"] = Relationship(back_populates="user")
+    integrations: List["UserIntegration"] = Relationship(back_populates="user")
 
 class Family(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -162,3 +163,16 @@ class ChatMessage(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id")
     content: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class UserIntegration(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    provider: str = Field(index=True)  # 'google'
+    access_token: str
+    refresh_token: Optional[str] = None
+    expires_at: datetime
+    scopes: str = Field(default="[]")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    # Relaciones
+    user: User = Relationship(back_populates="integrations")

@@ -1,25 +1,44 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated, List
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
+
 from ..database import get_session
+from ..dependencies import CurrentUser, DBSession
 from ..models import User, Family, FamilyMember
-from ..security import get_password_hash, verify_password, create_access_token, get_current_user_id
-from pydantic import BaseModel
+from ..schemas import (
+    FamilyMemberRead,
+    JoinFamily,
+    Token,
+    UserLogin,
+    UserRead,
+    UserRegister,
+    UserUpdate,
+)
+from ..security import (
+    create_access_token,
+    get_current_user_id,
+    get_password_hash,
+    verify_password,
+)
 import secrets
 import string
 
 router = APIRouter()
 
-class UserRegister(BaseModel):
-    email: str
-    password: str
-    full_name: str
-    family_name: str = ""
+# Los schemas UserRegister y UserLogin están centralizados en app/schemas.py
 
-class UserLogin(BaseModel):
-    email: str
-    password: str
-
-@router.post("/register")
+@router.post(
+    "/register",
+    response_model=Token,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registro de nuevo usuario",
+    description=(
+        "Crea una cuenta nueva para un usuario. Opcionalmente puede crear una nueva "
+        "familia o unirse a una existente mediante el campo `family_name`. "
+        "Retorna un token JWT listo para usar en los demás endpoints."
+    ),
+)
 async def register(user: UserRegister, session: Session = Depends(get_session)):
     # Verificar si el usuario ya existe
     existing_user = session.exec(select(User).where(User.email == user.email)).first()
@@ -71,10 +90,19 @@ async def register(user: UserRegister, session: Session = Depends(get_session)):
     }
 
 @router.post("/register/", include_in_schema=False)
-async def register_slash(user: UserRegister, session: Session = Depends(get_session)):
+async def register_slash(user: UserRegister, session: DBSession):
     return await register(user, session)
 
-@router.post("/token")
+@router.post(
+    "/token",
+    response_model=Token,
+    summary="Iniciar sesión (obtener JWT)",
+    description=(
+        "Autentica al usuario con email y contraseña. Retorna un token JWT Bearer "
+        "que debe enviarse en el header `Authorization: Bearer <token>` para acceder "
+        "a los endpoints protegidos. El token expira en **24 horas**."
+    ),
+)
 async def login(user: UserLogin, session: Session = Depends(get_session)):
     # Buscar usuario
     db_user = session.exec(select(User).where(User.email == user.email)).first()
@@ -93,81 +121,96 @@ async def login(user: UserLogin, session: Session = Depends(get_session)):
     }
 
 @router.post("/token/", include_in_schema=False)
-async def login_slash(user: UserLogin, session: Session = Depends(get_session)):
+async def login_slash(user: UserLogin, session: DBSession):
     return await login(user, session)
 
-@router.get("/familia/miembros")
+@router.get(
+    "/familia/miembros",
+    response_model=List[FamilyMemberRead],
+    summary="Listar miembros de la familia",
+    description=(
+        "Retorna la lista de todos los miembros de la familia a la que pertenece "
+        "el usuario autenticado. Incluye nombre, email, avatar y color personal de cada miembro."
+    ),
+)
 async def get_family_members(
-    session: Session = Depends(get_session),
-    user_id: int = Depends(get_current_user_id)
+    session: DBSession,
+    current_user: CurrentUser,
 ):
-    """Obtener miembros de la familia del usuario"""
     # Obtener familia del usuario
-    member = session.exec(select(FamilyMember).where(FamilyMember.user_id == user_id)).first()
-    
+    member = session.exec(
+        select(FamilyMember).where(FamilyMember.user_id == current_user.id)
+    ).first()
+
     if not member:
         return []
-    
+
     # Obtener todos los miembros de la familia
     members = session.exec(
         select(User)
         .join(FamilyMember)
         .where(FamilyMember.family_id == member.family_id)
     ).all()
-    
+
     return [
-        {
-            "id": m.id,
-            "full_name": m.full_name,
-            "email": m.email,
-            "avatar_url": m.avatar_url,
-            "color": m.color
-        }
+        FamilyMemberRead(
+            id=m.id,
+            full_name=m.full_name,
+            email=m.email,
+            avatar_url=m.avatar_url,
+            color=m.color,
+        )
         for m in members
     ]
 
-@router.get("/me")
+@router.get(
+    "/me",
+    response_model=UserRead,
+    summary="Obtener perfil del usuario autenticado",
+    description=(
+        "Retorna la información del perfil del usuario que realiza la solicitud, "
+        "identificado a través del token JWT. Incluye ID, email, nombre y color personal."
+    ),
+)
 async def get_current_user_info(
-    session: Session = Depends(get_session),
-    user_id: int = Depends(get_current_user_id)
+    current_user: CurrentUser,
 ):
-    """Obtener información del usuario actual"""
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    return {
-        "id": user.id,
-        "email": user.email,
-        "full_name": user.full_name,
-        "avatar_url": user.avatar_url,
-        "color": user.color
-    }
+    return UserRead(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        avatar_url=current_user.avatar_url,
+        color=current_user.color,
+    )
 
-@router.patch("/me")
+@router.patch(
+    "/me",
+    response_model=UserRead,
+    summary="Actualizar perfil del usuario autenticado",
+    description=(
+        "Actualiza los campos del perfil del usuario autenticado. "
+        "Acepta `full_name`, `avatar_url` y `color` (formato hex #RRGGBB). "
+        "Solo se actualizan los campos enviados (PATCH parcial)."
+    ),
+)
 async def update_current_user(
-    update_data: dict,
-    session: Session = Depends(get_session),
-    user_id: int = Depends(get_current_user_id)
+    update_data: UserUpdate,
+    session: DBSession,
+    current_user: CurrentUser,
 ):
-    """Actualizar información del usuario actual"""
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    # Actualizar color si está presente
-    if "color" in update_data:
-        # Validar formato de color hex
-        color = update_data["color"]
-        if not (isinstance(color, str) and len(color) == 7 and color.startswith("#")):
-            raise HTTPException(status_code=400, detail="Formato de color inválido. Use formato hex: #RRGGBB")
-        user.color = color
-    
-    session.add(user)
+    # Aplicar solo los campos enviados (exclude_unset para PATCH real)
+    data = update_data.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(current_user, field, value)
+
+    session.add(current_user)
     session.commit()
-    session.refresh(user)
-    
-    return {
-        "message": "Usuario actualizado exitosamente",
-        "color": user.color
-    }
+    session.refresh(current_user)
+
+    return UserRead(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        avatar_url=current_user.avatar_url,
+        color=current_user.color,
+    )

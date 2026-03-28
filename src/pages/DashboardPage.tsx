@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Menu, X, PlusCircle, Moon, Sun, LogOut, Settings } from 'lucide-react';
+import { Calendar as CalendarIcon, Menu, X, PlusCircle, Moon, Sun, LogOut, Settings, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CalendarView from '../components/CalendarView';
 import { AIInput } from '../components/AIInput';
@@ -8,14 +8,27 @@ import { useAuth } from '../context/AuthContext';
 import { TasksView } from '../components/TasksView';
 import { ChatWidget } from '../components/ChatWidget';
 import { MetricsDashboard } from '../components/MetricsDashboard';
+import { GlobalSearch } from '../components/GlobalSearch';
+import { AICompanionPanel } from '../components/AICompanionPanel';
+import { AIOptimizationResponse, AISuggestion } from '../types';
+import { calendarService } from '../services/api';
+import toast, { Toaster } from 'react-hot-toast';
+import { UXFeedback } from '../lib/microInteractions';
 
 export const DashboardPage: React.FC = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    // Trigger para recargar el calendario si la IA crea eventos
     const [refreshCalendar, setRefreshCalendar] = useState(0);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'calendar' | 'tasks' | 'metrics'>('calendar');
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [aiOptimization, setAiOptimization] = useState<AIOptimizationResponse | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [lastAction, setLastAction] = useState<{
+        type: 'mover' | 'eliminar';
+        eventData: any;
+        suggestionId: number;
+    } | null>(null);
 
     // Estado del Modo Oscuro
     const [darkMode, setDarkMode] = useState(() => {
@@ -37,12 +50,149 @@ export const DashboardPage: React.FC = () => {
         }
     }, [darkMode]);
 
+    const fetchAIOptimization = async () => {
+        setIsAnalyzing(true);
+        try {
+            const result = await calendarService.optimizeSchedule("Analiza mi semana y sugiere 3 mejoras de productividad.");
+            if (result && result.sugerencias && result.sugerencias.length > 0) {
+                setAiOptimization(result);
+            }
+        } catch (error) {
+            console.error("Error IA proactiva:", error);
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleApplySuggestion = async (suggestion: AISuggestion) => {
+        try {
+            // 1. Capturar el evento original antes de la acción
+            const originalEvent = await calendarService.getEvent(suggestion.event_id);
+            setLastAction({
+                type: suggestion.accion as 'mover' | 'eliminar',
+                eventData: originalEvent,
+                suggestionId: suggestion.event_id
+            });
+
+            // 2. Ejecutar la acción
+            if (suggestion.accion === 'mover' && suggestion.nuevo_horario) {
+                await calendarService.updateEvent(suggestion.event_id, {
+                    start_time: suggestion.nuevo_horario
+                });
+                
+                toast.success((t) => (
+                    <div className="flex items-center gap-3">
+                        <span>Evento movido con éxito</span>
+                        <button 
+                            onClick={() => {
+                                handleUndo();
+                                toast.dismiss(t.id);
+                            }}
+                            className="px-2 py-1 bg-white ring-1 ring-slate-200 text-[10px] font-bold uppercase tracking-wider text-primary-600 rounded-md hover:bg-slate-50 transition-colors"
+                        >
+                            Deshacer
+                        </button>
+                    </div>
+                ), { duration: 6000 });
+            } else if (suggestion.accion === 'eliminar') {
+                await calendarService.deleteEvent(suggestion.event_id);
+                
+                toast.success((t) => (
+                    <div className="flex items-center gap-3">
+                        <span>Evento eliminado</span>
+                        <button 
+                            onClick={() => {
+                                handleUndo();
+                                toast.dismiss(t.id);
+                            }}
+                            className="px-2 py-1 bg-white ring-1 ring-slate-200 text-[10px] font-bold uppercase tracking-wider text-primary-600 rounded-md hover:bg-slate-50 transition-colors"
+                        >
+                            Deshacer
+                        </button>
+                    </div>
+                ), { duration: 6000 });
+            }
+            
+            setRefreshCalendar(prev => prev + 1);
+            UXFeedback.playSound('success');
+            UXFeedback.vibrate('success');
+            handleDismissSuggestion(suggestion.event_id);
+            
+        } catch (error) {
+            toast.error('Error al aplicar cambios');
+            console.error("Error:", error);
+        }
+    };
+
+    const handleUndo = async () => {
+        if (!lastAction) return;
+
+        try {
+            if (lastAction.type === 'mover') {
+                await calendarService.updateEvent(lastAction.eventData.id, {
+                    start_time: lastAction.eventData.start_time,
+                    end_time: lastAction.eventData.end_time
+                });
+                toast('Cambio revertido', { icon: '↩️' });
+            } else if (lastAction.type === 'eliminar') {
+                // Re-creamos el evento con todos sus campos originales (excluyendo el ID actual para evitar conflictos si el backend lo regenera)
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, ...eventToRecreate } = lastAction.eventData;
+                await calendarService.createEvent(eventToRecreate);
+                toast('Evento restaurado', { icon: '↩️' });
+            }
+
+            setRefreshCalendar(prev => prev + 1);
+            UXFeedback.playSound('undo');
+            UXFeedback.vibrate('medium');
+            setLastAction(null);
+        } catch (error) {
+            toast.error('No se pudo deshacer la acción');
+            console.error("Undo error:", error);
+        }
+    };
+
+    const handleDismissSuggestion = (eventId: number) => {
+        if (!aiOptimization) return;
+        const filtered = aiOptimization.sugerencias.filter(s => s.event_id !== eventId);
+        if (filtered.length === 0) {
+            setAiOptimization(null);
+        } else {
+            setAiOptimization({ ...aiOptimization, sugerencias: filtered });
+        }
+    };
+
+    // Carga proactiva
+    useEffect(() => {
+        if (user) {
+            fetchAIOptimization();
+        }
+    }, [user]);
+
+    // Atajo de teclado Ctrl+K / Cmd+K para abrir la búsqueda global
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                UXFeedback.playSound('click');
+                setIsSearchOpen((prev) => !prev);
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, []);
+
     const handleEventCreated = () => {
         setRefreshCalendar(prev => prev + 1);
     };
 
+    const handleSearchNavigate = (view: 'calendar' | 'tasks' | 'metrics') => {
+        setViewMode(view);
+    };
+
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-slate-900 overflow-hidden font-sans text-slate-800 dark:text-slate-200 selection:bg-primary-200 selection:text-primary-900 transition-colors duration-300">
+            <Toaster position="top-right" />
 
             {/* Overlay Móvil para el Sidebar con desenfoque */}
             {isSidebarOpen && (
@@ -186,41 +336,75 @@ export const DashboardPage: React.FC = () => {
                     </div>
                 </header>
 
-                {/* Header Desktop (Selector de Vista) */}
+                {/* Header Desktop (Selector de Vista + Búsqueda) */}
                 <div className="hidden lg:flex items-center justify-between px-8 py-4 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">
                         {viewMode === 'calendar' ? 'Calendario' : viewMode === 'tasks' ? 'Tareas y Rutinas' : 'Métricas y Estadísticas'}
                     </h2>
-                    <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+                    <div className="flex items-center gap-3">
+                        {/* Botón de búsqueda */}
                         <button
-                            onClick={() => setViewMode('calendar')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'calendar' ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                            id="global-search-btn"
+                            onClick={() => setIsSearchOpen(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 text-sm hover:bg-gray-200 dark:hover:bg-slate-600 hover:text-gray-700 dark:hover:text-slate-200 transition-all border border-gray-200 dark:border-slate-600"
+                            aria-label="Abrir búsqueda global (Ctrl+K)"
                         >
-                            Calendario
+                            <Search className="w-4 h-4" />
+                            <span>Buscar…</span>
+                            <kbd className="hidden sm:inline-flex ml-2 gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-white/20 dark:bg-white/5 border border-gray-300 dark:border-slate-600">Ctrl K</kbd>
                         </button>
-                        <button
-                            onClick={() => setViewMode('tasks')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'tasks' ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
-                        >
-                            Tareas
-                        </button>
-                        <button
-                            onClick={() => setViewMode('metrics')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'metrics' ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
-                        >
-                            Métricas
-                        </button>
+                        {/* Selector de vista */}
+                        <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+                            <button
+                                onClick={() => {
+                                    UXFeedback.playSound('click');
+                                    UXFeedback.vibrate('light');
+                                    setViewMode('calendar');
+                                }}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'calendar' ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                            >
+                                Calendario
+                            </button>
+                            <button
+                                onClick={() => {
+                                    UXFeedback.playSound('click');
+                                    UXFeedback.vibrate('light');
+                                    setViewMode('tasks');
+                                }}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'tasks' ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                            >
+                                Tareas
+                            </button>
+                            <button
+                                onClick={() => {
+                                    UXFeedback.playSound('click');
+                                    UXFeedback.vibrate('light');
+                                    setViewMode('metrics');
+                                }}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'metrics' ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                            >
+                                Métricas
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <div className="flex-1 p-3 md:p-6 lg:p-8 overflow-hidden relative">
                     <div className="h-full flex flex-col">
+                        {aiOptimization && (
+                            <AICompanionPanel 
+                                data={aiOptimization}
+                                onApply={handleApplySuggestion}
+                                onDismiss={() => setAiOptimization(null)}
+                                onDismissSuggestion={handleDismissSuggestion}
+                            />
+                        )}
                         {viewMode === 'calendar' ? (
                             <CalendarView refreshTrigger={refreshCalendar} />
                         ) : viewMode === 'tasks' ? (
                             <TasksView />
                         ) : (
-                            <MetricsDashboard />
+                            <MetricsDashboard aiOptimization={aiOptimization} />
                         )}
                     </div>
                 </div>
@@ -228,6 +412,13 @@ export const DashboardPage: React.FC = () => {
 
             {/* Widget de Chat Flotante */}
             <ChatWidget />
+
+            {/* Modal de Búsqueda Global */}
+            <GlobalSearch
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                onNavigate={handleSearchNavigate}
+            />
         </div>
     );
 };
