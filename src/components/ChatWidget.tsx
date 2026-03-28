@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/auth';
 import { calendarService } from '../services/api';
 import { cn } from '../lib/cn';
-import { UXFeedback } from '../lib/UXInteractions.ts';
+import { UXFeedback } from '../lib/UXInteractions';
 
 // ------------------------------------------------------------------
 // Tipos
