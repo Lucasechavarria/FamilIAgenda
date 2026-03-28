@@ -4,7 +4,7 @@ import { api } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import { generateWeeklyReport } from '../lib/pdfReport';
 import { AIOptimizationResponse } from '../types';
-import { UXFeedback } from '../lib/microInteractions';
+import { UXFeedback } from '@/lib/MicroInteractions';
 
 interface MetricsData {
     totalEvents: number;

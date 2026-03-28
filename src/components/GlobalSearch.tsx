@@ -277,7 +277,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
   // Foco al abrir + Feedback
   useEffect(() => {
     if (isOpen) {
-      import('../lib/microInteractions').then(({ UXFeedback }) => {
+      import('@/lib/MicroInteractions').then(({ UXFeedback }) => {
         UXFeedback.playSound('pop');
       });
       setQuery('');
@@ -314,7 +314,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
   };
 
   const selectResult = (item: SearchResultItem) => {
-    import('../lib/microInteractions').then(({ UXFeedback }) => {
+    import('@/lib/MicroInteractions').then(({ UXFeedback }) => {
       UXFeedback.playSound('success');
       UXFeedback.vibrate('light');
     });
@@ -406,7 +406,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
                 key={f}
                 type="button"
                 onClick={() => {
-                  import('../lib/microInteractions').then(({ UXFeedback }) => {
+                  import('@/lib/MicroInteractions').then(({ UXFeedback }) => {
                     UXFeedback.playSound('click');
                   });
                   setFilter(f);
