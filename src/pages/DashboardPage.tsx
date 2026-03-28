@@ -13,7 +13,7 @@ import { AICompanionPanel } from '../components/AICompanionPanel';
 import { AIOptimizationResponse, AISuggestion } from '../types';
 import { calendarService } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
-import { UXFeedback } from '@/lib/UXInteractions';
+import { UXFeedback } from '../lib/UXInteractions.ts';
 
 export const DashboardPage: React.FC = () => {
     const { user, logout } = useAuth();
