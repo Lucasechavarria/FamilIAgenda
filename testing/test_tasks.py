@@ -11,7 +11,7 @@ def get_auth_header(client: TestClient, email="tasks@example.com"):
             "family_name": "Task Family"
         }
     )
-    assert response.status_code == 200, f"Registration failed: {response.json()}"
+    assert response.status_code == 201, f"Registration failed: {response.json()}"
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 

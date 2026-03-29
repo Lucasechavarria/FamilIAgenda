@@ -12,7 +12,7 @@ def get_auth_header(client: TestClient, email="ai@example.com"):
             "family_name": "AI Family"
         }
     )
-    assert response.status_code == 200, f"Registration failed: {response.json()}"
+    assert response.status_code == 201, f"Registration failed: {response.json()}"
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 

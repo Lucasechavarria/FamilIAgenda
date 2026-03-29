@@ -15,7 +15,7 @@ def get_auth_header(client: TestClient, session: Session, email="notif@example.c
             "family_name": "Notif Family"
         }
     )
-    assert response.status_code == 200, f"Registration failed: {response.json()}"
+    assert response.status_code == 201, f"Registration failed: {response.json()}"
     token = response.json()["access_token"]
     
     # Obtener user_id

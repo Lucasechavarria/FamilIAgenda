@@ -12,12 +12,12 @@ def test_metrics_calculation(mock_handle, mock_schedule, client: TestClient, ses
         "/api/auth/register",
         json={
             "email": "metrics@example.com",
-            "password": "pass",
+            "password": "password123",
             "full_name": "Metrics User",
             "family_name": "Metrics Family"
         }
     )
-    assert res.status_code == 200
+    assert res.status_code == 201
     token = res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     

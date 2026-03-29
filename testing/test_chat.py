@@ -9,12 +9,12 @@ def test_get_chat_history(client: TestClient, session: Session):
         "/api/auth/register",
         json={
             "email": "chat_hist@example.com",
-            "password": "pass",
+            "password": "password123",
             "full_name": "Chat User",
             "family_name": "Chat Family"
         }
     )
-    assert res.status_code == 200, f"Registration failed: {res.json()}"
+    assert res.status_code == 201, f"Registration failed: {res.json()}"
     token = res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     
