@@ -81,4 +81,4 @@ def test_metrics_calculation(mock_handle, mock_schedule, client: TestClient, ses
     assert data["completedEvents"] == 1, f"Expected 1 completed, got {data['completedEvents']}"
     assert data["pendingEvents"] == 1, f"Expected 1 pending, got {data['pendingEvents']}"
     assert data["categoryBreakdown"]["work"] == 1
-    assert data["categoryBreakdown"]["personal"] == 1
+    assert data["categoryBreakdown"]["home"] == 1
