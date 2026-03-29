@@ -12,12 +12,12 @@ def test_metrics_calculation(mock_handle, mock_schedule, client: TestClient, ses
         "/api/auth/register",
         json={
             "email": "metrics@example.com",
-            "password": "pass",
+            "password": "password123",
             "full_name": "Metrics User",
             "family_name": "Metrics Family"
         }
     )
-    assert res.status_code == 200
+    assert res.status_code == 201
     token = res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     
@@ -65,7 +65,7 @@ def test_metrics_calculation(mock_handle, mock_schedule, client: TestClient, ses
             "title": "Pending",
             "start_time": now.isoformat(),
             "end_time": (now + timedelta(hours=1)).isoformat(),
-            "category": "personal",
+            "category": "home",
             "family_id": family_id
         }
     )
@@ -81,4 +81,4 @@ def test_metrics_calculation(mock_handle, mock_schedule, client: TestClient, ses
     assert data["completedEvents"] == 1, f"Expected 1 completed, got {data['completedEvents']}"
     assert data["pendingEvents"] == 1, f"Expected 1 pending, got {data['pendingEvents']}"
     assert data["categoryBreakdown"]["work"] == 1
-    assert data["categoryBreakdown"]["personal"] == 1
+    assert data["categoryBreakdown"]["home"] == 1

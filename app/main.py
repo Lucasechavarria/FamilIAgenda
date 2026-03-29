@@ -14,6 +14,7 @@ from .models import User, Family, FamilyMember, Event, Task, ChatMessage, Notifi
 from .security import get_password_hash
 from .notification_service import initialize_firebase_app
 from .routers import auth, ai, notifications, events, tasks, sharing, chat, metrics
+from .routers import search as search_router
 from apscheduler.schedulers.background import BackgroundScheduler
 from .services.background_tasks import check_upcoming_tasks
 from .services.notification_scheduler import process_pending_notifications
@@ -88,12 +89,62 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown()
     print("Cerrando FamilIAgenda...")
 
+_API_DESCRIPTION = """
+## Bienvenido a la API de **FamilIAgenda** 🏠
+
+Plataforma de gestión familiar inteligente que combina calendarios colaborativos,
+gestión de tareas y **IA generativa** para simplificar la organización del hogar.
+
+---
+
+### 🔐 Autenticación
+
+La API usa **JWT Bearer tokens**. Para obtener un token:
+1. Registrate en `POST /api/auth/register`
+2. Inicia sesión en `POST /api/auth/token`
+3. Incluye el token en el header: `Authorization: Bearer <tu_token>`
+
+### 📅 Módulos principales
+
+| Módulo | Descripción |
+|--------|-------------|
+| **Auth** | Registro, login y gestión de perfil |
+| **Eventos** | CRUD completo de eventos del calendario |
+| **Tareas** | Gestión de responsabilidades familiares |
+| **Chat** | Mensajería en tiempo real via WebSocket |
+| **IA** | Creación de eventos por lenguaje natural |
+| **Métricas** | Dashboard de productividad familiar |
+
+### 📚 Notas de versión
+
+Versión `1.0.0` — Marzo 2026
+"""
+
+_API_TAGS = [
+    {"name": "Autenticación", "description": "Registro, login y gestión del perfil de usuario."},
+    {"name": "Eventos", "description": "Creación, edición, eliminación y asignación de eventos del calendario."},
+    {"name": "Tareas", "description": "Gestión de responsabilidades y tareas del hogar."},
+    {"name": "Chat", "description": "Mensajería familiar en tiempo real mediante WebSockets."},
+    {"name": "Inteligencia Artificial", "description": "Creación de eventos mediante interpretación de lenguaje natural (Groq/Gemini)."},
+    {"name": "Métricas", "description": "Dashboard de productividad y estadísticas de la familia."},
+    {"name": "Notificaciones", "description": "Gestión de tokens FCM y notificaciones push."},
+]
+
 # Crear instancia de FastAPI
 app = FastAPI(
     title="FamilIAgenda API",
-    description="API para gestión familiar inteligente",
+    description=_API_DESCRIPTION,
     version="1.0.0",
-    lifespan=lifespan
+    contact={
+        "name": "Equipo FamilIAgenda",
+        "url": "https://famil-ia-genda.vercel.app",
+    },
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    openapi_tags=_API_TAGS,
+    lifespan=lifespan,
 )
 
 # Middleware de Logging
@@ -112,19 +163,20 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(LoggingMiddleware)
 
-# Configurar CORS - Permitir todos los subdominios de Vercel y Render
+# Configurar CORS - Permitir dominios específicos
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:8000",
     "https://familiagenda-frontend.onrender.com",
     "https://familiagenda-backend.onrender.com",
+    "https://famil-ia-genda.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",  # Raw string para evitar warning
+    allow_origin_regex=r"https://familiagenda-.*\.vercel\.app", 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -145,7 +197,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     print(f"    Body: {body}")
     return JSONResponse(
         status_code=422,
-        content={"detail": jsonable_encoder(exc.errors()), "body": body},
+        content={
+            "detail": jsonable_encoder(exc.errors()), 
+            "message": "Error de validación en los datos enviados",
+            "body": body
+        },
     )
 
 # Ruta raíz
@@ -161,3 +217,5 @@ app.include_router(metrics.router, prefix="/api/events", tags=["Métricas"])
 app.include_router(events.router, prefix="/api/events", tags=["Eventos"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Tareas"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
+app.include_router(search_router.router, prefix="/api/search", tags=["Búsqueda Global"])
+

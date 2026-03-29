@@ -12,7 +12,7 @@ def get_auth_header(client: TestClient, email="ai@example.com"):
             "family_name": "AI Family"
         }
     )
-    assert response.status_code == 200, f"Registration failed: {response.json()}"
+    assert response.status_code == 201, f"Registration failed: {response.json()}"
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
@@ -85,7 +85,7 @@ def test_ai_without_provider(client: TestClient):
         response = client.post(
             "/api/ai/sugerir-eventos",
             headers=headers,
-            json={"texto": "Test"}
+            json={"texto": "Tarea de prueba"}
         )
         
         # Debe retornar error cuando no hay AI configurada

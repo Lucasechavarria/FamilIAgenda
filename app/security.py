@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import jwt, JWTError
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from dotenv import load_dotenv
@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 load_dotenv()
 
-# Configuración para el hashing de contraseñas
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+# Configuración para el hashing de contraseñas (Argon2 por defecto en pwdlib si está instalado)
+password_hash = PasswordHash.recommended()
 
 # Clave secreta para firmar los tokens JWT. ¡DEBE SER UNA VARIABLE DE ENTORNO EN PRODUCCIÓN!
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "tu_super_secreto_jwt_muy_seguro_y_largo")
@@ -24,11 +24,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifica si la contraseña en texto plano coincide con el hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    return password_hash.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
     """Genera el hash de una contraseña."""
-    return pwd_context.hash(password)
+    return password_hash.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Crea un token JWT que será la 'cédula' de sesión."""

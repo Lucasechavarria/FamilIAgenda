@@ -3,7 +3,7 @@ import json
 import firebase_admin
 from firebase_admin import credentials, messaging
 from sqlmodel import Session, select
-from .models import NotificationToken
+from .models import NotificationToken, FamilyMember
 
 # Variable para asegurar que Firebase se inicialice solo una vez
 _firebase_app_initialized = False
@@ -40,8 +40,12 @@ def send_notification_to_family(session: Session, family_id: int, title: str, bo
         print("No se puede enviar notificación: Firebase no está inicializado.")
         return 
 
-    # 1. Obtener todos los tokens para la familia
-    statement = select(NotificationToken).where(NotificationToken.family_id == family_id)
+    # 1. Obtener todos los tokens para la familia mediante un JOIN
+    statement = (
+        select(NotificationToken)
+        .join(FamilyMember, NotificationToken.user_id == FamilyMember.user_id)
+        .where(FamilyMember.family_id == family_id)
+    )
     tokens_in_db = session.exec(statement).all()
     
     registration_tokens = [t.token for t in tokens_in_db]

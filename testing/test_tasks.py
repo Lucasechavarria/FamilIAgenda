@@ -11,7 +11,7 @@ def get_auth_header(client: TestClient, email="tasks@example.com"):
             "family_name": "Task Family"
         }
     )
-    assert response.status_code == 200, f"Registration failed: {response.json()}"
+    assert response.status_code == 201, f"Registration failed: {response.json()}"
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
@@ -34,7 +34,7 @@ def test_create_task(client: TestClient):
             "notification_config": '{"pre": [15], "post": false}'
         }
     )
-    assert response.status_code == 200, f"Create task failed: {response.text}"
+    assert response.status_code == 201, f"Create task failed: {response.text}"
     data = response.json()
     assert data["title"] == "New Task"
     assert data["priority"] == "high"
@@ -56,7 +56,7 @@ def test_get_tasks(client: TestClient):
             "priority": "normal"
         }
     )
-    assert create_res.status_code == 200, f"Create task failed: {create_res.text}"
+    assert create_res.status_code == 201, f"Create task failed: {create_res.text}"
     
     # Obtener tareas
     response = client.get("/api/tasks/", headers=headers)

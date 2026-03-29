@@ -15,7 +15,7 @@ def get_auth_header(client: TestClient, session: Session, email="events@example.
             "family_name": "Event Family"
         }
     )
-    assert response.status_code == 200, f"Registration failed: {response.json()}"
+    assert response.status_code == 201, f"Registration failed: {response.json()}"
     token = response.json()["access_token"]
     
     # Obtener family_id del usuario
@@ -40,7 +40,7 @@ def test_create_event(mock_schedule, client: TestClient, session: Session):
             "description": "Description",
             "start_time": start.isoformat(),
             "end_time": end.isoformat(),
-            "category": "personal",
+            "category": "home",
             "family_id": family_id
         }
     )
@@ -83,12 +83,12 @@ def test_assign_event(mock_schedule, client: TestClient, session: Session):
         "/api/auth/register",
         json={
             "email": "mom@example.com",
-            "password": "pass",
+            "password": "password123",
             "full_name": "Mom",
             "family_name": "Smiths"
         }
     )
-    assert res1.status_code == 200, f"Registration failed: {res1.json()}"
+    assert res1.status_code == 201, f"Registration failed: {res1.json()}"
     token1 = res1.json()["access_token"]
     headers = {"Authorization": f"Bearer {token1}"}
     

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CalendarEvent, Family, AIAnalysisResponse, AIEventProposal } from '../types';
+import { CalendarEvent, Family, AIOptimizationResponse, AIEventProposal } from '../types';
 
 // Configuración base de Axios
 const getBaseUrl = () => {
@@ -14,6 +14,22 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Interceptor para inyectar el token de autenticación automáticamente
+api.interceptors.request.use((config) => {
+  const userStr = localStorage.getItem('user');
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      if (user.token) {
+        config.headers.Authorization = `Bearer ${user.token}`;
+      }
+    } catch (e) {
+      console.error("Error al leer token para Axios:", e);
+    }
+  }
+  return config;
 });
 
 // Helper to get current family ID from storage
@@ -31,6 +47,14 @@ const getFamilyId = () => {
 };
 
 export const calendarService = {
+  /**
+   * Obtiene un evento específico por ID.
+   */
+  getEvent: async (id: number): Promise<CalendarEvent> => {
+    const response = await api.get(`/events/${id}`);
+    return response.data;
+  },
+
   /**
    * Obtiene todos los eventos de la familia actual.
    */
@@ -70,6 +94,13 @@ export const calendarService = {
   },
 
   /**
+   * Elimina un evento.
+   */
+  deleteEvent: async (id: number): Promise<void> => {
+    await api.delete(`/events/${id}`);
+  },
+
+  /**
    * Envía texto a la IA para interpretar un evento estructurado.
    */
   interpretEvent: async (textInput: string): Promise<AIEventProposal> => {
@@ -81,10 +112,119 @@ export const calendarService = {
   },
 
   /**
+   * Versión STREAMING de interpretación de eventos.
+   * Utiliza Fetch + ReadableStream para obtener tokens en tiempo real.
+   */
+  interpretEventStream: async (
+    textInput: string, 
+    onToken: (token: string) => void,
+    onDone: (result: AIEventProposal) => void,
+    onError: (error: string) => void
+  ) => {
+    const baseUrl = getBaseUrl();
+    const userStr = localStorage.getItem('user');
+    let token = "";
+    
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        token = user.token || "";
+      } catch (e) {}
+    }
+
+    try {
+      const response = await fetch(`${baseUrl}/ai/interpretar-stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ texto: textInput })
+      });
+
+      if (!response.ok) throw new Error("Error en la conexión con la IA");
+      if (!response.body) throw new Error("No se recibió flujo de datos");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+
+        // Procesar líneas del buffer (formato SSE: data: {...}\n\n)
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || ""; // Mantener el último segmento incompleto
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const jsonStr = line.replace("data: ", "").trim();
+              const payload = JSON.parse(jsonStr);
+
+              if (payload.type === "token") {
+                onToken(payload.value);
+              } else if (payload.type === "done") {
+                onDone(payload.result as AIEventProposal);
+              } else if (payload.type === "error") {
+                onError(payload.message);
+              }
+            } catch (e) {
+              console.warn("Fallo al parsear fragmento SSE:", line);
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      onError(err.message || "Error desconocido en el asistente");
+    }
+  },
+  
+  /**
+   * Propone cambios a un evento específico usando IA.
+   */
+  proposeEdit: async (eventId: number, text: string): Promise<Partial<CalendarEvent>> => {
+    const response = await api.post(`/ai/propose-edit?event_id=${eventId}`, {
+      texto: text
+    });
+    return response.data;
+  },
+
+  /**
+   * Obtiene insights proactivos de "Aura"
+   */
+  getProactiveInsights: async (): Promise<{ insights: any[] }> => {
+    const response = await api.get('/ai/proactive-insights');
+    return response.data;
+  },
+
+  /**
+   * Aplica una acción proactiva sugerida por la IA
+   */
+  applyProactiveAction: async (actionId: string, payload: any): Promise<any> => {
+    const response = await api.post(`/ai/apply-action/${actionId}`, payload);
+    return response.data;
+  },
+
+  /**
+   * Usa IA para optimizar el calendario actual.
+   */
+  optimizeSchedule: async (text: string): Promise<AIOptimizationResponse> => {
+    const response = await api.post('/ai/optimizar-calendario', {
+      texto: text
+    });
+    // El backend devuelve { optimizacion: { analisis, sugerencias... }, ... }
+    return response.data.optimizacion;
+  },
+
+  /**
    * (Legacy/Future) Envía texto para análisis general.
    */
-  analyzeSchedule: async (textInput: string): Promise<AIAnalysisResponse> => {
-    // Este endpoint era el dummy anterior, lo mantenemos por si se expande la funcionalidad
+  analyzeSchedule: async (textInput: string): Promise<any> => {
     const response = await api.post('/analyze-schedule', {
       input_text: textInput,
       family_id: getFamilyId()

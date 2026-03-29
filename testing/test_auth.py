@@ -12,7 +12,7 @@ def test_register_user(client: TestClient):
             "family_name": "Test Family"
         }
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert "access_token" in data
     assert data["user_email"] == "test@example.com"

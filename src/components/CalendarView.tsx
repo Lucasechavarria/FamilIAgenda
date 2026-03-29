@@ -13,11 +13,39 @@ interface CalendarViewProps {
   refreshTrigger: number;
 }
 
+// Forma mínima del evento tal como FullCalendar lo consume internamente
+interface SelectedEventDetail {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date | null;
+  category: string;
+  description?: string | null;
+  color: string;
+}
+
+interface FullCalendarEventInput {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  backgroundColor: string;
+  borderColor: string;
+  textColor: string;
+  classNames: string[];
+  extendedProps: {
+    category: string;
+    description?: string | null;
+  };
+}
+
 export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) => {
-  const [events, setEvents] = useState<any[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [events, setEvents] = useState<FullCalendarEventInput[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<SelectedEventDetail | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -26,19 +54,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
   const loadEvents = async () => {
     try {
       const data = await calendarService.getEvents();
-      const formattedEvents = data.map(evt => ({
-        id: evt.id?.toString(),
+      const formattedEvents: FullCalendarEventInput[] = data.map((evt) => ({
+        id: evt.id?.toString() ?? '',
         title: evt.title,
-        start: evt.start_date,
-        end: evt.end_date,
+        start: evt.start_time,
+        end: evt.end_time,
         backgroundColor: getCategoryColor(evt.category),
         borderColor: 'transparent',
         textColor: '#ffffff',
         classNames: ['custom-event-animation'],
         extendedProps: {
           category: evt.category,
-          description: evt.description
-        }
+          description: evt.description,
+        },
       }));
       setEvents(formattedEvents);
     } catch (error) {
@@ -46,28 +74,55 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
     }
   };
 
-  const handleEventDrop = async (info: any) => {
-    const { event } = info;
+  // EventDropArg de @fullcalendar/interaction — tipado como unknown para evitar any
+  const handleEventDrop = async (info: Record<string, unknown>) => {
+    const event = info.event as { id: string; start: Date; end: Date | null; };
     try {
-      await calendarService.updateEvent(parseInt(event.id), {
-        start_date: event.start.toISOString(),
-        end_date: event.end?.toISOString() || event.start.toISOString()
+      await calendarService.updateEvent(parseInt(event.id, 10), {
+        start_time: event.start.toISOString(),
+        end_time: (event.end ?? event.start).toISOString(),
       });
+      loadEvents();
     } catch (error) {
-      info.revert();
-      console.error("Error actualizando evento:", error);
+      (info.revert as () => void)();
+      console.error('Error actualizando evento:', error);
     }
   };
 
-  const handleEventClick = (info: any) => {
+  const handleDelete = async () => {
+    if (!selectedEvent) return;
+    if (!window.confirm('¿Seguro que quieres eliminar este evento?')) return;
+
+    setIsDeleting(true);
+    try {
+      await calendarService.deleteEvent(parseInt(selectedEvent.id, 10));
+      setIsModalOpen(false);
+      loadEvents();
+    } catch (error) {
+      console.error("Error eliminando:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // EventClickArg de @fullcalendar/interaction
+  const handleEventClick = (info: Record<string, unknown>) => {
+    const event = info.event as {
+      id: string;
+      title: string;
+      start: Date;
+      end: Date | null;
+      backgroundColor: string;
+      extendedProps: { category: string; description?: string | null };
+    };
     setSelectedEvent({
-      id: info.event.id,
-      title: info.event.title,
-      start: info.event.start,
-      end: info.event.end,
-      category: info.event.extendedProps.category,
-      description: info.event.extendedProps.description,
-      color: info.event.backgroundColor
+      id: event.id,
+      title: event.title,
+      start: event.start,
+      end: event.end,
+      category: event.extendedProps.category,
+      description: event.extendedProps.description,
+      color: event.backgroundColor,
     });
     setIsModalOpen(true);
   };
@@ -384,14 +439,31 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
                 </div>
               )}
 
-              <div className="pt-4 flex justify-end gap-2">
+              <div className="pt-6 flex justify-between items-center border-t border-slate-100 dark:border-slate-700 mt-2">
                 <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center gap-1.5 text-sm font-medium"
                 >
-                  Cerrar
+                  {isDeleting ? 'Eliminando...' : 'Eliminar'}
                 </button>
-                {/* Aquí se podrían añadir botones de Editar/Eliminar en el futuro */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    onClick={() => {
+                        setIsModalOpen(false);
+                        setIsEditModalOpen(true);
+                    }}
+                    className="px-4 py-2 text-sm font-bold bg-primary-500 hover:bg-primary-600 dark:bg-primary-600 dark:hover:bg-primary-700 text-white rounded-lg transition-all shadow-sm flex items-center gap-1.5"
+                  >
+                    ✏️ Editar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -400,11 +472,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
 
       {/* Botón Flotante para Crear Evento */}
       <button
+        id="calendar-create-event"
+        type="button"
         onClick={() => setIsCreateModalOpen(true)}
+        aria-label="Crear nuevo evento"
         className="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-10 group"
-        title="Crear nuevo evento"
       >
-        <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
+        <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" aria-hidden="true" />
       </button>
 
       {/* Modal de Crear Evento */}
@@ -416,6 +490,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
           setIsCreateModalOpen(false);
         }}
       />
+
+      {/* Modal de Editar Evento */}
+      {selectedEvent && (
+        <EventModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            initialEvent={{
+                id: parseInt(selectedEvent.id, 10),
+                title: selectedEvent.title,
+                start_time: selectedEvent.start.toISOString(),
+                end_time: (selectedEvent.end || selectedEvent.start).toISOString(),
+                category: selectedEvent.category,
+                description: selectedEvent.description || undefined,
+            } as any}
+            onEventCreated={() => {
+                loadEvents();
+                setIsEditModalOpen(false);
+            }}
+        />
+      )}
     </div>
   );
 };

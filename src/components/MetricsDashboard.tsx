@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, CheckCircle, Clock, Users, Calendar, Target } from 'lucide-react';
+import { BarChart3, TrendingUp, CheckCircle, Clock, Users, Calendar, Target, FileDown } from 'lucide-react';
 import { api } from '../services/auth';
+import { useAuth } from '../context/AuthContext';
+import { generateWeeklyReport } from '../lib/pdfReport';
+import { AIOptimizationResponse } from '../types';
+import { UXFeedback } from '../lib/UXInteractions';
 
 interface MetricsData {
     totalEvents: number;
@@ -18,10 +22,36 @@ interface MetricsData {
     }>;
 }
 
-export const MetricsDashboard: React.FC = () => {
+interface MetricsDashboardProps {
+    aiOptimization?: AIOptimizationResponse | null;
+}
+
+export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ aiOptimization }) => {
+    const { user } = useAuth();
     const [metrics, setMetrics] = useState<MetricsData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
     const [timeRange, setTimeRange] = useState<'week' | 'month' | 'all'>('month');
+
+    const handleExportPDF = async () => {
+        if (!metrics) return;
+        setIsExporting(true);
+        UXFeedback.playSound('click');
+        try {
+            await generateWeeklyReport(
+                metrics, 
+                user?.family_name || 'Mi Familia', 
+                timeRange,
+                aiOptimization
+            );
+            UXFeedback.playSound('success');
+            UXFeedback.vibrate('success');
+        } catch (error) {
+            console.error('Error exportando PDF:', error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     useEffect(() => {
         loadMetrics();
@@ -75,23 +105,37 @@ export const MetricsDashboard: React.FC = () => {
                     <BarChart3 className="w-6 h-6 text-primary-400" />
                     Métricas y Estadísticas
                 </h2>
-                <div className="flex gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
-                    {[
-                        { value: 'week', label: 'Semana' },
-                        { value: 'month', label: 'Mes' },
-                        { value: 'all', label: 'Todo' },
-                    ].map((option) => (
-                        <button
-                            key={option.value}
-                            onClick={() => setTimeRange(option.value as any)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${timeRange === option.value
-                                    ? 'bg-primary-500 text-white shadow-lg'
-                                    : 'text-slate-400 hover:text-slate-200'
-                                }`}
-                        >
-                            {option.label}
-                        </button>
-                    ))}
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleExportPDF}
+                        disabled={isExporting}
+                        className="flex items-center gap-2 px-4 py-2 bg-secondary-500 hover:bg-secondary-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-secondary-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+                    >
+                        {isExporting ? (
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <FileDown className="w-4 h-4" />
+                        )}
+                        Exportar PDF
+                    </button>
+                    <div className="flex gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
+                        {[
+                            { value: 'week', label: 'Semana' },
+                            { value: 'month', label: 'Mes' },
+                            { value: 'all', label: 'Todo' },
+                        ].map((option) => (
+                            <button
+                                key={option.value}
+                                onClick={() => setTimeRange(option.value as any)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${timeRange === option.value
+                                        ? 'bg-primary-500 text-white shadow-lg'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 

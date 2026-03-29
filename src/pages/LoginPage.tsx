@@ -21,11 +21,12 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const response = await authService.login({ email, password });
-            authLogin(response.user_name, response.user_email);
+            // Usamos la función del contexto que ya llama al servicio y actualiza el estado atómicamente
+            await authLogin({ email, password });
             navigate('/');
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Error al iniciar sesión');
+            // El error lanzado por authService ya es un string amigable
+            setError(err.message || 'Error al iniciar sesión');
         } finally {
             setLoading(false);
         }

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -11,6 +12,20 @@ import JoinFamilyPage from './pages/JoinFamilyPage';
 import UserSettingsPage from './pages/UserSettingsPage';
 
 function App() {
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('SW registrado con éxito:', registration.scope);
+          })
+          .catch(err => {
+            console.error('Error al registrar SW:', err);
+          });
+      });
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>
