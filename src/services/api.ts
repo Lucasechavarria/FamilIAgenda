@@ -1,4 +1,5 @@
 import axios from 'axios';
+// v1.1.0 - Estabilización de Capa de Red
 import { CalendarEvent, Family, AIOptimizationResponse, AIEventProposal } from '../types';
 
 // Configuración base de Axios
