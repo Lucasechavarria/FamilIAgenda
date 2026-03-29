@@ -3,10 +3,18 @@ import { CalendarEvent, Family, AIOptimizationResponse, AIEventProposal } from '
 
 // Configuración base de Axios
 const getBaseUrl = () => {
-  // En producción, usar la variable de entorno
-  // En desarrollo, usar localhost
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  return `${apiUrl}/api`;
+  // Prioridad: variable de entorno (definida en Vercel/Local)
+  if (import.meta.env.VITE_API_URL) {
+    return `${import.meta.env.VITE_API_URL}/api`;
+  }
+  
+  // Fallback para producción si se olvidó la variable en Vercel
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'https://familiagenda-api.onrender.com/api';
+  }
+
+  // Localhost por defecto
+  return 'http://localhost:8000/api';
 };
 
 const api = axios.create({
@@ -18,23 +26,16 @@ const api = axios.create({
 
 // Interceptor para inyectar el token de autenticación automáticamente
 api.interceptors.request.use((config) => {
-  const userStr = localStorage.getItem('user');
-  if (userStr) {
-    try {
-      const user = JSON.parse(userStr);
-      if (user.token) {
-        config.headers.Authorization = `Bearer ${user.token}`;
-      }
-    } catch (e) {
-      console.error("Error al leer token para Axios:", e);
-    }
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
 // Helper to get current family ID from storage
 const getFamilyId = () => {
-  const userStr = localStorage.getItem('user');
+  const userStr = localStorage.getItem('user_profile');
   if (userStr) {
     try {
       const user = JSON.parse(userStr);
@@ -122,15 +123,7 @@ export const calendarService = {
     onError: (error: string) => void
   ) => {
     const baseUrl = getBaseUrl();
-    const userStr = localStorage.getItem('user');
-    let token = "";
-    
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        token = user.token || "";
-      } catch (e) {}
-    }
+    const token = localStorage.getItem('access_token') || "";
 
     try {
       const response = await fetch(`${baseUrl}/ai/interpretar-stream`, {

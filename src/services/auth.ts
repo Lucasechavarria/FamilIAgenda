@@ -66,7 +66,7 @@ export const authService = {
             if (response.data.access_token) {
                 localStorage.setItem('access_token', response.data.access_token);
                 // También guardar datos básicos del usuario
-                localStorage.setItem('user', JSON.stringify({
+                localStorage.setItem('user_profile', JSON.stringify({
                     name: response.data.user_name,
                     email: response.data.user_email
                 }));

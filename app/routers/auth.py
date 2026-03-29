@@ -82,11 +82,14 @@ async def register(user: UserRegister, session: Session = Depends(get_session)):
     # Crear token
     access_token = create_access_token(data={"sub": str(db_user.id)})
     
+    member = session.exec(select(FamilyMember).where(FamilyMember.user_id == db_user.id)).first()
+    family_id = member.family_id if member else None
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "user_name": db_user.full_name,
-        "user_email": db_user.email
+        "user_email": db_user.email,
+        "family_id": family_id
     }
 
 @router.post("/register/", include_in_schema=False)
@@ -113,11 +116,14 @@ async def login(user: UserLogin, session: Session = Depends(get_session)):
     # Crear token
     access_token = create_access_token(data={"sub": str(db_user.id)})
     
+    member = session.exec(select(FamilyMember).where(FamilyMember.user_id == db_user.id)).first()
+    family_id = member.family_id if member else None
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "user_name": db_user.full_name,
-        "user_email": db_user.email
+        "user_email": db_user.email,
+        "family_id": family_id
     }
 
 @router.post("/token/", include_in_schema=False)
