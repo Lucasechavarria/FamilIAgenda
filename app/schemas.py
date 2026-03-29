@@ -59,6 +59,7 @@ class Token(BaseModel):
     ]
     user_name: Annotated[str, Field(description="Nombre completo del usuario autenticado.")]
     user_email: Annotated[str, Field(description="Email del usuario autenticado.")]
+    family_id: Annotated[Optional[int], Field(default=None, description="ID de la familia del usuario.")]
 
 
 # =============================================================================
