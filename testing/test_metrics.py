@@ -65,7 +65,7 @@ def test_metrics_calculation(mock_handle, mock_schedule, client: TestClient, ses
             "title": "Pending",
             "start_time": now.isoformat(),
             "end_time": (now + timedelta(hours=1)).isoformat(),
-            "category": "personal",
+            "category": "home",
             "family_id": family_id
         }
     )

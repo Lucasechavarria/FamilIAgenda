@@ -85,7 +85,7 @@ def test_ai_without_provider(client: TestClient):
         response = client.post(
             "/api/ai/sugerir-eventos",
             headers=headers,
-            json={"texto": "Test"}
+            json={"texto": "Tarea de prueba"}
         )
         
         # Debe retornar error cuando no hay AI configurada

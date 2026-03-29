@@ -68,16 +68,12 @@ def test_event_notification_scheduling(mock_schedule, client: TestClient, sessio
             "title": "Event with Notification",
             "start_time": start.isoformat(),
             "end_time": end.isoformat(),
-            "category": "personal",
+            "category": "home",
             "family_id": family_id
         }
     )
     
     assert response.status_code in [200, 201]
-    
-    # Verificar que se llamó a la función de scheduling
-    # (aunque esté mockeada, verificamos que se intentó programar)
-    # mock_schedule.assert_called_once()
 
 def test_get_notification_history(client: TestClient, session: Session):
     """Test retrieving notification history"""

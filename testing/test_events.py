@@ -40,7 +40,7 @@ def test_create_event(mock_schedule, client: TestClient, session: Session):
             "description": "Description",
             "start_time": start.isoformat(),
             "end_time": end.isoformat(),
-            "category": "personal",
+            "category": "home",
             "family_id": family_id
         }
     )
