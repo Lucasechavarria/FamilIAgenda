@@ -47,6 +47,7 @@ export interface User {
   avatar_url?: string | null;
   profile_type?: ProfileType;
   personal_color?: string | null;
+  kanban_layout?: 'sidebar' | 'top';
 }
 
 /** Miembro de la familia tal como llega de `/api/auth/familia/miembros` */
@@ -66,6 +67,8 @@ export interface RecurrencePattern {
   daysOfWeek: number[];
   /** Fecha límite de recurrencia (ISO string) */
   until?: string | null;
+  endDate?: string;
+  occurrences?: number;
 }
 
 /** Configuración de notificaciones para una tarea */
@@ -87,10 +90,15 @@ export interface CalendarEvent {
   end_time: string;
   family_id?: number;
   category: EventCategory;
+  visibility: 'private' | 'family';
+  visibility_type: 'invisible' | 'busy';
   is_recurring?: boolean;
   recurrence_pattern?: string | null;
+  parent_id?: number | null;
   assigned_to_id?: number | null;
   assigned_to?: FamilyMember | null;
+  has_conflict?: boolean;
+  conflict_details?: string | null;
 }
 
 /** Corresponde al modelo `Task` del backend */
@@ -104,8 +112,10 @@ export interface Task {
   family_id?: number;
   assigned_to_id?: number | null;
   assigned_to?: FamilyMember | null;
+  category?: string;
   is_recurring?: boolean;
-  recurrence_pattern?: RecurrencePatternKey | null;
+  recurrence_pattern?: string | null;
+  parent_id?: number | null;
   notification_config?: string | null;
 }
 
@@ -153,6 +163,8 @@ export interface EventFormData {
   startDate: string;
   endDate: string;
   category: EventCategory;
+  visibility: 'private' | 'family';
+  visibilityType: 'invisible' | 'busy';
   assignedToId: number | null;
   isRecurring: boolean;
   recurrencePattern: RecurrencePattern;

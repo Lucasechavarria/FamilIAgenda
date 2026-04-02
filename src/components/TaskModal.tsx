@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Bell, Repeat, User as UserIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { api } from '../services/auth';
+import { taskService, calendarService } from '../services/api';
 import { cn } from '../lib/cn';
 import type { FamilyMember, TaskFormData, RecurrencePatternKey } from '../types';
 
@@ -34,8 +34,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onTaskCre
 
   const loadMembers = async (): Promise<void> => {
     try {
-      const response = await api.get<FamilyMember[]>('/api/auth/family/members');
-      setMembers(response.data);
+      const data = await calendarService.getFamilyMembers();
+      setMembers(data);
     } catch (error) {
       console.error('Error cargando miembros:', error);
     }
@@ -57,7 +57,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onTaskCre
         post: data.notify_post,
       });
 
-      await api.post('/api/tasks/', {
+      await taskService.createTask({
         title:               data.title,
         description:         data.description,
         due_date:            dueDateTime.toISOString(),

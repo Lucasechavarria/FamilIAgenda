@@ -22,6 +22,8 @@ interface SelectedEventDetail {
   category: string;
   description?: string | null;
   color: string;
+  has_conflict?: boolean;
+  conflict_details?: string | null;
 }
 
 interface FullCalendarEventInput {
@@ -36,6 +38,8 @@ interface FullCalendarEventInput {
   extendedProps: {
     category: string;
     description?: string | null;
+    has_conflict?: boolean;
+    conflict_details?: string | null;
   };
 }
 
@@ -62,10 +66,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
         backgroundColor: getCategoryColor(evt.category),
         borderColor: 'transparent',
         textColor: '#ffffff',
-        classNames: ['custom-event-animation'],
+        classNames: [
+          'custom-event-animation',
+          evt.title === 'Ocupado' ? 'event-busy' : '',
+          evt.has_conflict ? 'event-conflict' : ''
+        ],
         extendedProps: {
           category: evt.category,
           description: evt.description,
+          has_conflict: evt.has_conflict,
+          conflict_details: evt.conflict_details,
         },
       }));
       setEvents(formattedEvents);
@@ -113,7 +123,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
       start: Date;
       end: Date | null;
       backgroundColor: string;
-      extendedProps: { category: string; description?: string | null };
+      extendedProps: { 
+        category: string; 
+        description?: string | null;
+        has_conflict?: boolean;
+        conflict_details?: string | null;
+      };
     };
     setSelectedEvent({
       id: event.id,
@@ -123,7 +138,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
       category: event.extendedProps.category,
       description: event.extendedProps.description,
       color: event.backgroundColor,
-    });
+      has_conflict: event.extendedProps.has_conflict,
+      conflict_details: event.extendedProps.conflict_details,
+    } as any);
     setIsModalOpen(true);
   };
 
@@ -364,6 +381,40 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
           color: #94a3b8;
         }
 
+        /* --- CLASE OCUPADO (BUSY) --- */
+        .event-busy {
+          background-image: repeating-linear-gradient(
+            45deg,
+            rgba(0, 0, 0, 0.05),
+            rgba(0, 0, 0, 0.05) 10px,
+            rgba(0, 0, 0, 0) 10px,
+            rgba(0, 0, 0, 0) 20px
+          ) !important;
+          opacity: 0.8;
+        }
+
+        /* --- CLASE CONFLICTO (CONFLICTO) --- */
+        .event-conflict {
+          border: 3px solid #ef4444 !important;
+          box-shadow: 0 0 10px rgba(239, 68, 68, 0.4) !important;
+          animation: conflict-pulse 2s infinite;
+        }
+
+        @keyframes conflict-pulse {
+          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .dark .event-busy {
+          background-image: repeating-linear-gradient(
+            45deg,
+            rgba(255, 255, 255, 0.05),
+            rgba(255, 255, 255, 0.05) 10px,
+            rgba(255, 255, 255, 0) 10px,
+            rgba(255, 255, 255, 0) 20px
+          ) !important;
+        }
+
       `}</style>
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
@@ -439,6 +490,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
                 </div>
               )}
 
+              {(selectedEvent as any).has_conflict && (
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl animate-pulse">
+                  <span className="text-lg">⚠️</span>
+                  <div>
+                    <p className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">Conflicto de Horario</p>
+                    <p className="text-sm text-red-700 dark:text-red-300">{(selectedEvent as any).conflict_details}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="pt-6 flex justify-between items-center border-t border-slate-100 dark:border-slate-700 mt-2">
                 <button
                   onClick={handleDelete}
@@ -454,15 +515,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
                   >
                     Cerrar
                   </button>
-                  <button
-                    onClick={() => {
-                        setIsModalOpen(false);
-                        setIsEditModalOpen(true);
-                    }}
-                    className="px-4 py-2 text-sm font-bold bg-primary-500 hover:bg-primary-600 dark:bg-primary-600 dark:hover:bg-primary-700 text-white rounded-lg transition-all shadow-sm flex items-center gap-1.5"
-                  >
-                    ✏️ Editar
-                  </button>
+                  {selectedEvent.title !== 'Ocupado' && (
+                    <button
+                      onClick={() => {
+                          setIsModalOpen(false);
+                          setIsEditModalOpen(true);
+                      }}
+                      className="px-4 py-2 text-sm font-bold bg-primary-500 hover:bg-primary-600 dark:bg-primary-600 dark:hover:bg-primary-700 text-white rounded-lg transition-all shadow-sm flex items-center gap-1.5"
+                    >
+                      ✏️ Editar
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

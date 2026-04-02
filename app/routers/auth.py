@@ -3,11 +3,12 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
-from ..database import get_session
-from ..dependencies import CurrentUser, DBSession
-from ..models import User, Family, FamilyMember
-from ..schemas import (
+from app.database import get_session
+from app.dependencies import CurrentUser, DBSession
+from app.models import User, Family, FamilyMember
+from app.schemas import (
     FamilyMemberRead,
+    FamilyRead,
     JoinFamily,
     Token,
     UserLogin,
@@ -15,7 +16,7 @@ from ..schemas import (
     UserRegister,
     UserUpdate,
 )
-from ..security import (
+from app.security import (
     create_access_token,
     get_current_user_id,
     get_password_hash,
@@ -79,8 +80,14 @@ async def register(user: UserRegister, session: Session = Depends(get_session)):
             session.add(member)
             session.commit()
     
-    # Crear token
-    access_token = create_access_token(data={"sub": str(db_user.id)})
+    # Crear token enriquecido
+    access_token = create_access_token(
+        data={
+            "sub": str(db_user.id),
+            "full_name": db_user.full_name,
+            "email": db_user.email
+        }
+    )
     
     member = session.exec(select(FamilyMember).where(FamilyMember.user_id == db_user.id)).first()
     family_id = member.family_id if member else None
@@ -113,8 +120,14 @@ async def login(user: UserLogin, session: Session = Depends(get_session)):
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
     
-    # Crear token
-    access_token = create_access_token(data={"sub": str(db_user.id)})
+    # Crear token enriquecido
+    access_token = create_access_token(
+        data={
+            "sub": str(db_user.id),
+            "full_name": db_user.full_name,
+            "email": db_user.email
+        }
+    )
     
     member = session.exec(select(FamilyMember).where(FamilyMember.user_id == db_user.id)).first()
     family_id = member.family_id if member else None
@@ -147,27 +160,53 @@ async def get_family_members(
     member = session.exec(
         select(FamilyMember).where(FamilyMember.user_id == current_user.id)
     ).first()
-
+    
     if not member:
         return []
-
-    # Obtener todos los miembros de la familia
+        
+    # Obtener todos los miembros de esa familia
     members = session.exec(
         select(User)
         .join(FamilyMember)
         .where(FamilyMember.family_id == member.family_id)
     ).all()
-
+    
+    from app.services.gamification import get_level_name
     return [
         FamilyMemberRead(
-            id=m.id,
-            full_name=m.full_name,
-            email=m.email,
-            avatar_url=m.avatar_url,
-            color=m.color,
-        )
-        for m in members
+            id=u.id,
+            full_name=u.full_name,
+            email=u.email,
+            avatar_url=u.avatar_url,
+            color=u.color,
+            points=u.points,
+            level=u.level,
+            level_name=get_level_name(u.level)
+        ) for u in members
     ]
+
+@router.get(
+    "/familia/mi-familia",
+    response_model=FamilyRead,
+    summary="Obtener detalles de mi familia",
+    description="Retorna la información básica de la familia a la que pertenece el usuario autenticado.",
+)
+async def get_my_family(
+    session: DBSession,
+    current_user: CurrentUser,
+):
+    member = session.exec(
+        select(FamilyMember).where(FamilyMember.user_id == current_user.id)
+    ).first()
+    
+    if not member:
+        raise HTTPException(status_code=404, detail="El usuario no pertenece a ninguna familia")
+        
+    family = session.get(Family, member.family_id)
+    if not family:
+        raise HTTPException(status_code=404, detail="Familia no encontrada")
+        
+    return family
 
 @router.get(
     "/me",
@@ -181,12 +220,16 @@ async def get_family_members(
 async def get_current_user_info(
     current_user: CurrentUser,
 ):
+    from app.services.gamification import get_level_name
     return UserRead(
         id=current_user.id,
         email=current_user.email,
         full_name=current_user.full_name,
         avatar_url=current_user.avatar_url,
         color=current_user.color,
+        points=current_user.points,
+        level=current_user.level,
+        level_name=get_level_name(current_user.level)
     )
 
 @router.patch(
@@ -213,10 +256,15 @@ async def update_current_user(
     session.commit()
     session.refresh(current_user)
 
+    from app.services.gamification import get_level_name
     return UserRead(
         id=current_user.id,
         email=current_user.email,
         full_name=current_user.full_name,
         avatar_url=current_user.avatar_url,
         color=current_user.color,
+        points=current_user.points,
+        level=current_user.level,
+        level_name=get_level_name(current_user.level),
+        theme=current_user.theme
     )

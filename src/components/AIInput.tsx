@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Send, Sparkles, Check, X, Loader2, Calendar, Clock, Tag, ArrowRight } from 'lucide-react';
-import { calendarService } from '../services/api';
+import { Send, Sparkles, X, Loader2 } from 'lucide-react';
+import { calendarService, taskService } from '../services/api';
 import { AIEventProposal } from '../types';
 import { UXFeedback } from '../lib/UXInteractions';
+import { AuraActionCard, AuraAction } from './AuraActionCard';
 
 interface AIInputProps {
   onEventCreated: () => void;
@@ -11,7 +12,7 @@ interface AIInputProps {
 export const AIInput: React.FC<AIInputProps> = ({ onEventCreated }) => {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [proposal, setProposal] = useState<AIEventProposal | null>(null);
+  const [action, setAction] = useState<AuraAction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -23,7 +24,7 @@ export const AIInput: React.FC<AIInputProps> = ({ onEventCreated }) => {
 
     setLoading(true);
     setError(null);
-    setProposal(null);
+    setAction(null);
     setStreamingText('');
     setIsStreaming(true);
 
@@ -36,10 +37,15 @@ export const AIInput: React.FC<AIInputProps> = ({ onEventCreated }) => {
         (token) => {
           setStreamingText(prev => prev + token);
         },
-        (result) => {
-          setProposal(result);
+        (result: any) => {
+          // El resultado ahora viene con la estructura {action: '...', ...}
+          setAction(result);
           setIsStreaming(false);
           setLoading(false);
+          
+          if (result.action === 'QUERY' && result.answer) {
+            setStreamingText(result.answer);
+          }
         },
         (errMsg) => {
           setError(errMsg);
@@ -55,26 +61,49 @@ export const AIInput: React.FC<AIInputProps> = ({ onEventCreated }) => {
     }
   };
 
-  // 2. Confirmar y Guardar en la DB Real
-  const handleConfirm = async () => {
-    if (!proposal) return;
+  // 2. Ejecutar la acción confirmada
+  const handleConfirmAction = async () => {
+    if (!action) return;
     setLoading(true);
     try {
-      await calendarService.createEvent({
-        title: proposal.titulo,
-        start_time: proposal.start_time,
-        end_time: proposal.end_time,
-        category: proposal.category,
-        description: proposal.descripcion,
-      });
+      UXFeedback.vibrate('medium');
+      
+      switch (action.action) {
+        case 'CREATE':
+          await calendarService.createEvent({
+            title: action.title || 'Nuevo Evento',
+            start_time: action.start_time || new Date().toISOString(),
+            end_time: action.end_time || new Date(Date.now() + 3600000).toISOString(),
+            category: action.category || 'other',
+            description: '',
+            visibility: 'family',
+            visibility_type: 'busy'
+          });
+          break;
+          
+        case 'UPDATE':
+          if (action.id) {
+            await calendarService.updateEvent(action.id, action.changes);
+          }
+          break;
+          
+        case 'DELETE':
+          if (action.id) {
+            await calendarService.deleteEvent(action.id);
+          }
+          break;
+          
+        default:
+          break;
+      }
 
-      setProposal(null);
+      setAction(null);
       setText('');
+      setStreamingText('');
       UXFeedback.playSound('success');
-      UXFeedback.vibrate('success');
       onEventCreated();
     } catch (err) {
-      setError("Error al guardar el evento.");
+      setError("No pude completar la acción seleccionada.");
     } finally {
       setLoading(false);
     }
@@ -117,129 +146,44 @@ export const AIInput: React.FC<AIInputProps> = ({ onEventCreated }) => {
 
       {/* Área de Input / Confirmación */}
       <div className="flex-1 flex flex-col relative">
-        {!proposal ? (
+        {!action ? (
           <form onSubmit={handleInterpret} className="relative flex-1 flex flex-col group">
-            {isStreaming ? (
-              <div className="w-full h-40 p-6 bg-primary-50/30 dark:bg-slate-900/40 border-2 border-primary-200 dark:border-primary-900/50 rounded-2xl flex flex-col animate-in fade-in duration-500 overflow-hidden">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce"></div>
-                  <span className="text-[10px] uppercase font-black tracking-widest text-primary-600 dark:text-primary-400 ml-2">Asistente procesando</span>
-                </div>
-                <div className="text-sm text-gray-700 dark:text-gray-200 font-medium leading-relaxed italic line-clamp-4">
-                  "{streamingText || "Analizando tu mensaje..."}"
-                </div>
-                <div className="absolute bottom-4 right-4 text-xs font-bold text-primary-400 dark:text-primary-600 animate-pulse">
-                  Generando respuesta...
+            {/* ... textarea y botón existentes ... */}
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="¿Qué planeas hacer? Aura puede crear, mover o borrar eventos..."
+              className="w-full h-40 p-5 bg-white dark:bg-slate-800 border-2 border-gray-100 dark:border-slate-700 rounded-2xl focus:border-primary-400 dark:focus:border-primary-500 focus:ring-4 focus:ring-primary-50 dark:focus:ring-primary-900/20 outline-none resize-none text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 shadow-sm transition-all duration-300 ease-out"
+              disabled={loading}
+            />
+            {isStreaming && (
+              <div className="absolute inset-0 bg-white/80 dark:bg-slate-800/80 rounded-2xl flex items-center justify-center backdrop-blur-sm z-20">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+                  <p className="text-sm font-bold text-primary-600 animate-pulse">Aura está pensando...</p>
                 </div>
               </div>
-            ) : (
-              <>
-                <textarea
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="¿Qué planeas hacer?..."
-                  className="w-full h-40 p-5 bg-white dark:bg-slate-800 border-2 border-gray-100 dark:border-slate-700 rounded-2xl focus:border-primary-400 dark:focus:border-primary-500 focus:ring-4 focus:ring-primary-50 dark:focus:ring-primary-900/20 outline-none resize-none text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 shadow-sm transition-all duration-300 ease-out"
-                  disabled={loading}
-                />
-                
-                {/* Botón flotante animado */}
-                <div className="absolute bottom-4 right-4">
-                  <button 
-                    type="submit" 
-                    disabled={loading || !text.trim()}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 transform ${
-                      loading || !text.trim()
-                        ? 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-gray-500 translate-y-0' 
-                        : 'bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-primary-500/30 hover:-translate-y-1 hover:scale-105 active:scale-95'
-                    }`}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Interpretando...
-                      </>
-                    ) : (
-                      <>
-                        Generar
-                        <Send size={16} />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </>
             )}
+            <div className="absolute bottom-4 right-4">
+              <button 
+                type="submit" 
+                disabled={loading || !text.trim()}
+                className="bg-primary-600 hover:bg-primary-700 text-white p-3 rounded-xl shadow-lg transition-all active:scale-95"
+              >
+                <Send size={20} />
+              </button>
+            </div>
           </form>
         ) : (
-          /* Tarjeta de Confirmación Mejorada */
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300 flex flex-col transition-colors">
-            {/* Header de la tarjeta */}
-            <div className="bg-gradient-to-r from-primary-50 to-white dark:from-slate-700 dark:to-slate-800 px-5 py-3 border-b border-primary-100 dark:border-slate-600 flex justify-between items-center">
-              <span className="text-xs font-extrabold text-primary-700 dark:text-primary-300 uppercase tracking-wider flex items-center gap-1.5">
-                <div className="w-2 h-2 bg-primary-500 rounded-full animate-bounce"></div>
-                Vista Previa
-              </span>
-            </div>
-            
-            <div className="p-5 space-y-5">
-              {/* Título */}
-              <div>
-                <h4 className="font-bold text-gray-800 dark:text-white text-lg leading-tight mb-1">
-                  {proposal.titulo}
-                </h4>
-                <div className="h-1 w-12 bg-primary-200 dark:bg-primary-700 rounded-full"></div>
-              </div>
-              
-              {/* Detalles */}
-              <div className="space-y-3 bg-gray-50/50 dark:bg-slate-900/50 p-4 rounded-xl border border-gray-100 dark:border-slate-700">
-                <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-gray-400 dark:text-gray-500 mt-0.5">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wide mb-0.5">Horario</p>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      {formatTime(proposal.start_time)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-gray-400 dark:text-gray-500 mt-0.5">
-                    <Tag className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wide mb-1">Categoría</p>
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${getCategoryBadgeStyle(proposal.category)}`}>
-                      {categoryLabels[proposal.category] || proposal.category}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Acciones: Rojo vs Verde */}
-              <div className="flex gap-3 pt-1">
-                <button 
-                  onClick={() => setProposal(null)}
-                  className="flex-1 py-3 px-4 bg-white dark:bg-slate-700 border-2 border-gray-100 dark:border-slate-600 text-gray-500 dark:text-gray-300 text-sm font-bold rounded-xl hover:border-accent-200 hover:text-accent-600 dark:hover:text-accent-400 hover:bg-accent-50 dark:hover:bg-slate-600 transition-all duration-200 flex justify-center items-center gap-2 group"
-                  disabled={loading}
-                >
-                  <X className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-                  Cancelar
-                </button>
-                
-                <button 
-                  onClick={handleConfirm}
-                  disabled={loading}
-                  className="flex-[1.5] py-3 px-4 bg-secondary-500 text-white text-sm font-bold rounded-xl hover:bg-secondary-600 shadow-md shadow-secondary-500/20 hover:shadow-lg hover:shadow-secondary-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex justify-center items-center gap-2"
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-                  Confirmar Evento
-                </button>
-              </div>
-            </div>
-          </div>
+          <AuraActionCard 
+            action={action} 
+            onConfirm={handleConfirmAction} 
+            onCancel={() => {
+              setAction(null);
+              setStreamingText('');
+            }}
+            isProcessing={loading}
+          />
         )}
 
         {error && (

@@ -4,11 +4,11 @@ from sqlmodel import Session, select
 from datetime import datetime, timezone
 import json
 
-from ..database import get_session
-from ..models import ChatMessage, FamilyMember, User
-from ..schemas import MessageRead
-from ..security import get_current_user_id_websocket
-from ..services.websocket_manager import manager
+from app.database import get_session
+from app.models import ChatMessage, FamilyMember, User
+from app.schemas import MessageRead
+from app.security import get_current_user_id_websocket
+from app.services.websocket_manager import manager
 
 router = APIRouter()
 

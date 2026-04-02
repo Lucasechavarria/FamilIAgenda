@@ -5,7 +5,7 @@ Este módulo elimina la duplicación de lógica de autenticación y autorizació
 entre los distintos routers, siguiendo el principio DRY (Don't Repeat Yourself).
 
 Uso:
-    from ..dependencies import get_current_user, get_current_family_id
+    from app.dependencies import get_current_user, get_current_family_id
 
     @router.get("/me")
     def get_me(current_user: Annotated[User, Depends(get_current_user)]):
@@ -16,9 +16,9 @@ from typing import Annotated, Generator
 from fastapi import Depends, HTTPException, status
 from sqlmodel import Session, select
 
-from .database import get_session
-from .models import User, FamilyMember
-from .security import get_current_user_id
+from app.database import get_session
+from app.models import User, FamilyMember
+from app.security import get_current_user_id
 
 
 # ---------------------------------------------------------------------------

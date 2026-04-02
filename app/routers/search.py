@@ -14,10 +14,10 @@ from typing import Annotated, List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, col, or_, select
 
-from ..database import get_session
-from ..dependencies import CurrentUser, DBSession
-from ..models import ChatMessage, Event, FamilyMember, Task, User
-from ..schemas import SearchResultItem, SearchResultsRead
+from app.database import get_session
+from app.dependencies import CurrentUser, DBSession
+from app.models import ChatMessage, Event, FamilyMember, Task, User
+from app.schemas import SearchResultItem, SearchResultsRead
 
 router = APIRouter()
 

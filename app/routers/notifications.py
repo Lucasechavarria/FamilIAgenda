@@ -3,10 +3,10 @@ from sqlmodel import Session, select
 from typing import List
 from datetime import datetime, timezone
 
-from ..database import get_session
-from ..models import NotificationToken, NotificationLog, User
-from ..schemas import TokenRegistration
-from ..security import get_current_user_id
+from app.database import get_session
+from app.models import NotificationToken, NotificationLog, User
+from app.schemas import TokenRegistration
+from app.security import get_current_user_id
 
 router = APIRouter()
 
@@ -117,7 +117,7 @@ def send_test_notification(
     
     # Intentar enviar notificación de prueba
     try:
-        from ..notification_service import send_notification
+        from app.notification_service import send_notification
         
         sent_count = 0
         for token in tokens:

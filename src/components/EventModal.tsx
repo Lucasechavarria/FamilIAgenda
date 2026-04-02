@@ -68,6 +68,8 @@ export const EventModal: React.FC<EventModalProps> = ({
     interval: 1,
     daysOfWeek: [],
   });
+  const [visibility, setVisibility] = useState<'private' | 'family'>('family');
+  const [visibilityType, setVisibilityType] = useState<'invisible' | 'busy'>('busy');
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState('');
 
@@ -112,8 +114,28 @@ export const EventModal: React.FC<EventModalProps> = ({
     setAssignedTo(null);
     setIsRecurring(false);
     setRecurrencePattern({ frequency: 'weekly', interval: 1, daysOfWeek: [] });
+    setVisibility('family');
+    setVisibilityType('busy');
     setAiPrompt('');
     setError('');
+  };
+
+  /**
+   * Convierte el patrón de la UI al formato RFC 5545 RRULE esperado por el backend.
+   */
+  const toRRULE = (p: RecurrencePattern): string => {
+    let rrule = `FREQ=${p.frequency.toUpperCase()};INTERVAL=${p.interval}`;
+    if (p.frequency === 'weekly' && p.daysOfWeek?.length) {
+      const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+      rrule += `;BYDAY=${p.daysOfWeek.map(d => days[d]).join(',')}`;
+    }
+    if (p.endDate) {
+      const date = new Date(p.endDate).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      rrule += `;UNTIL=${date}`;
+    } else if (p.occurrences) {
+      rrule += `;COUNT=${p.occurrences}`;
+    }
+    return rrule;
   };
 
   // --- Detección de Conflictos (Proactiva) ---
@@ -197,8 +219,10 @@ export const EventModal: React.FC<EventModalProps> = ({
         start_time: new Date(startDate).toISOString(),
         end_time: new Date(endDate).toISOString(),
         category,
+        visibility,
+        visibility_type: visibilityType,
         is_recurring: isRecurring,
-        recurrence_pattern: isRecurring ? JSON.stringify(recurrencePattern) : null,
+        recurrence_pattern: isRecurring ? toRRULE(recurrencePattern) : null,
         assigned_to_id: assignedTo,
       };
 
@@ -406,6 +430,67 @@ export const EventModal: React.FC<EventModalProps> = ({
               pattern={recurrencePattern}
               onPatternChange={setRecurrencePattern}
             />
+
+            {/* Privacidad */}
+            <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/10">
+              <label className="block text-sm font-medium text-slate-300">
+                Privacidad del Evento
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibility('family')}
+                  className={cn(
+                    "flex-1 p-2 rounded-xl border text-xs transition-all",
+                    visibility === 'family' ? "border-primary-500 bg-primary-500/20 text-primary-300" : "border-white/10 text-slate-400"
+                  )}
+                >
+                  Familiar (Visible)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility('private')}
+                  className={cn(
+                    "flex-1 p-2 rounded-xl border text-xs transition-all",
+                    visibility === 'private' ? "border-primary-500 bg-primary-500/20 text-primary-300" : "border-white/10 text-slate-400"
+                  )}
+                >
+                  Personal (Privado)
+                </button>
+              </div>
+
+              {visibility === 'private' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }} 
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col gap-2 pt-2 border-t border-white/5"
+                >
+                  <p className="text-[10px] text-slate-500 italic">Otros miembros de la familia verán esto como:</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setVisibilityType('busy')}
+                      className={cn(
+                        "flex-1 p-1.5 rounded-lg border text-[10px] transition-all",
+                        visibilityType === 'busy' ? "border-amber-500/50 bg-amber-500/10 text-amber-300" : "border-white/5 text-slate-500"
+                      )}
+                    >
+                      "Ocupado"
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVisibilityType('invisible')}
+                      className={cn(
+                        "flex-1 p-1.5 rounded-lg border text-[10px] transition-all",
+                        visibilityType === 'invisible' ? "border-slate-500/50 bg-slate-500/10 text-slate-300" : "border-white/5 text-slate-500"
+                      )}
+                    >
+                      Invisible
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
 
             <div className="flex gap-3 pt-4">
               <button

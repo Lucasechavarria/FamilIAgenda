@@ -1,16 +1,26 @@
 import axios from 'axios';
 
 const getApiUrl = () => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    return `${baseUrl}/api/auth`;
+    let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    // Asegurar que no terminamos con una barra para normalizar
+    if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+    
+    // Si la URL ya contiene /api, solo agregamos /auth. Si no, agregamos /api/auth
+    return baseUrl.includes('/api') ? `${baseUrl}/auth` : `${baseUrl}/api/auth`;
 };
 
 const API_URL = getApiUrl();
 
 export interface User {
-    id: string; // El backend devuelve 'sub' como string en el token, pero aquí podemos guardarlo si queremos
+    id: string;
     name: string;
     email: string;
+    points?: number;
+    level?: number;
+    level_name?: string;
+    theme?: string;
+    color?: string;
+    family_name?: string;
 }
 
 export interface LoginResponse {
@@ -18,6 +28,11 @@ export interface LoginResponse {
     token_type: string;
     user_name: string;
     user_email: string;
+    points?: number;
+    level?: number;
+    level_name?: string;
+    theme?: string;
+    family_id?: number;
 }
 
 export interface RegisterData {
@@ -103,8 +118,13 @@ export const authService = {
             const decoded = JSON.parse(jsonPayload);
             return {
                 id: decoded.sub,
-                name: decoded.user_name || 'Usuario', // El backend no siempre manda esto en el payload standard, pero lo mandamos en la respuesta de login
-                email: decoded.email
+                name: decoded.full_name || 'Usuario', 
+                email: decoded.email,
+                points: decoded.points,
+                level: decoded.level,
+                level_name: decoded.level_name,
+                theme: decoded.theme,
+                family_name: decoded.family_name
             };
         } catch (error) {
             return null;
