@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Menu, X, PlusCircle, Moon, Sun, LogOut, Settings, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CalendarView from '../components/CalendarView';
+import { DailyKanban } from '../components/DailyKanban';
 import { AIInput } from '../components/AIInput';
 import { NotificationManager } from '../components/NotificationManager';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/auth';
 import { TasksView } from '../components/TasksView';
 import { ChatWidget } from '../components/ChatWidget';
 import { MetricsDashboard } from '../components/MetricsDashboard';
@@ -14,6 +16,7 @@ import { AIOptimizationResponse, AISuggestion } from '../types';
 import { calendarService } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
 import { UXFeedback } from '../lib/UXInteractions';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const DashboardPage: React.FC = () => {
     const { user, logout } = useAuth();
@@ -186,6 +189,16 @@ export const DashboardPage: React.FC = () => {
         setRefreshCalendar(prev => prev + 1);
     };
 
+    const handleUpdateLayout = async (layout: 'sidebar' | 'top') => {
+        try {
+            await api.patch('/api/auth/me', { kanban_layout: layout });
+            toast.success('Diseño actualizado');
+            setTimeout(() => window.location.reload(), 500);
+        } catch (error) {
+            toast.error('Error al cambiar diseño');
+        }
+    };
+
     const handleSearchNavigate = (view: 'calendar' | 'tasks' | 'metrics') => {
         setViewMode(view);
     };
@@ -303,6 +316,26 @@ export const DashboardPage: React.FC = () => {
                             >
                                 <Settings size={18} />
                             </button>
+                            <div className="relative group/layout">
+                                <button className="p-1.5 rounded-lg text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+                                    <CalendarIcon size={18} />
+                                </button>
+                                <div className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl py-2 invisible group-hover/layout:visible opacity-0 group-hover/layout:opacity-100 transition-all z-50">
+                                    <p className="px-4 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Diseño Kanban</p>
+                                    <button 
+                                        onClick={() => handleUpdateLayout('sidebar')}
+                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-primary-50 dark:hover:bg-slate-700 transition-colors ${user?.kanban_layout !== 'top' ? 'text-primary-600 font-bold' : 'text-slate-600 dark:text-slate-300'}`}
+                                    >
+                                        Barra Lateral
+                                    </button>
+                                    <button 
+                                        onClick={() => handleUpdateLayout('top')}
+                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-primary-50 dark:hover:bg-slate-700 transition-colors ${user?.kanban_layout === 'top' ? 'text-primary-600 font-bold' : 'text-slate-600 dark:text-slate-300'}`}
+                                    >
+                                        Sección Superior
+                                    </button>
+                                </div>
+                            </div>
                             <button
                                 onClick={logout}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -399,13 +432,42 @@ export const DashboardPage: React.FC = () => {
                                 onDismissSuggestion={handleDismissSuggestion}
                             />
                         )}
-                        {viewMode === 'calendar' ? (
-                            <CalendarView refreshTrigger={refreshCalendar} />
-                        ) : viewMode === 'tasks' ? (
-                            <TasksView />
-                        ) : (
-                            <MetricsDashboard aiOptimization={aiOptimization} />
-                        )}
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={viewMode}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.3, ease: 'easeOut' }}
+                                className="flex-1 flex flex-col h-full"
+                            >
+                                {viewMode === 'calendar' ? (
+                                    <div className={`flex-1 flex gap-6 overflow-hidden ${user?.kanban_layout === 'top' ? 'flex-col' : 'lg:flex-row'}`}>
+                                        {user?.kanban_layout === 'top' && (
+                                            <div className="w-full h-auto max-h-[300px] overflow-y-auto mb-4 bg-white dark:bg-slate-800/50 rounded-3xl border border-gray-200 dark:border-slate-700 shadow-sm p-4">
+                                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
+                                                    <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse" />
+                                                    Tareas del Día (Vista Superior)
+                                                </h3>
+                                                <DailyKanban date={new Date()} refreshTrigger={refreshCalendar} />
+                                            </div>
+                                        )}
+                                        <div className="flex-[3] min-w-0 bg-white dark:bg-slate-800/50 rounded-3xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden relative">
+                                            <CalendarView refreshTrigger={refreshCalendar} />
+                                        </div>
+                                        {user?.kanban_layout !== 'top' && (
+                                            <div className="flex-1 min-w-[320px] hidden xl:block">
+                                                <DailyKanban date={new Date()} refreshTrigger={refreshCalendar} />
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : viewMode === 'tasks' ? (
+                                    <TasksView />
+                                ) : (
+                                    <MetricsDashboard aiOptimization={aiOptimization} />
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
                     </div>
                 </div>
             </main>

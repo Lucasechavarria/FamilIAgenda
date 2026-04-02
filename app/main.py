@@ -9,15 +9,15 @@ import time
 import asyncio
 
 from sqlmodel import Session, select
-from .database import create_db_and_tables, engine, SessionLocal
-from .models import User, Family, FamilyMember, Event, Task, ChatMessage, NotificationLog, NotificationToken, EventShare, TaskAssignmentHistory
-from .security import get_password_hash
-from .notification_service import initialize_firebase_app
-from .routers import auth, ai, notifications, events, tasks, sharing, chat, metrics
-from .routers import search as search_router
+from app.database import create_db_and_tables, engine, SessionLocal
+from app.models import User, Family, FamilyMember, Event, Task, ChatMessage, NotificationLog, NotificationToken, EventShare, TaskAssignmentHistory
+from app.security import get_password_hash
+from app.notification_service import initialize_firebase_app
+from app.routers import auth, ai, notifications, events, tasks, sharing, chat, metrics
+from app.routers import search as search_router
 from apscheduler.schedulers.background import BackgroundScheduler
-from .services.background_tasks import check_upcoming_tasks
-from .services.notification_scheduler import process_pending_notifications
+from app.services.background_tasks import check_upcoming_tasks
+from app.services.notification_scheduler import process_pending_notifications
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -204,6 +204,21 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         },
     )
 
+# Exception Handler para 500 (Errores inesperados)
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"🔥 UNHANDLED ERROR: {type(exc).__name__}: {str(exc)}")
+    import traceback
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={
+            "message": "Error interno del servidor",
+            "detail": str(exc) if app.debug else "Ocurrió un error inesperado al procesar la solicitud.",
+            "path": request.url.path
+        }
+    )
+
 # Ruta raíz
 @app.get("/")
 async def root():
@@ -213,7 +228,7 @@ async def root():
 app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(ai.router, prefix="/api/ai", tags=["Inteligencia Artificial"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notificaciones"])
-app.include_router(metrics.router, prefix="/api/events", tags=["Métricas"])
+app.include_router(metrics.router, prefix="/api/events/metrics", tags=["Métricas"])
 app.include_router(events.router, prefix="/api/events", tags=["Eventos"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Tareas"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])

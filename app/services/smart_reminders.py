@@ -5,8 +5,8 @@ Analiza patrones de eventos y sugiere recordatorios óptimos.
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List
 from sqlmodel import Session, select
-from ..models import Event, User, NotificationToken
-from ..notification_service import send_notification_to_family
+from app.models import Event, User, NotificationToken
+from app.notification_service import send_notification_to_family
 
 def calculate_smart_reminder_time(event: Event) -> List[datetime]:
     """

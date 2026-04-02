@@ -9,10 +9,10 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select, or_
 
-from ..database import get_session
-from ..dependencies import CurrentUser, CurrentFamilyId, DBSession
-from ..models import Event, EventShare, FamilyMember, NotificationLog, TaskAssignmentHistory
-from ..schemas import (
+from app.database import get_session
+from app.dependencies import CurrentUser, CurrentFamilyId, DBSession
+from app.models import Event, EventShare, FamilyMember, NotificationLog, TaskAssignmentHistory, User, Family
+from app.schemas import (
     AssignEventRequest,
     CompleteEventRequest,
     EventCreate,
@@ -20,14 +20,41 @@ from ..schemas import (
     EventUpdate,
     NotificationConfigRequest,
 )
-from ..security import get_current_user_id
-from ..services.notification_scheduler import (
+from app.security import get_current_user_id
+from app.services.notification_scheduler import (
     handle_recurring_event_completion,
     schedule_notifications_for_event,
 )
 from datetime import datetime, timezone
 
 router = APIRouter()
+ 
+def check_event_conflicts(session: Session, event: Event, family_id: Optional[int], user_id: int) -> Optional[str]:
+    """
+    Busca solapamientos de horario (overlaps) para el mismo usuario o en la misma familia.
+    Retorna una descripción del conflicto si existe, de lo contrario None.
+    """
+    # Buscar eventos que se solapen en el mismo rango de tiempo
+    # (A.start < B.end) AND (A.end > B.start)
+    statement = select(Event).where(
+        Event.id != event.id,  # No compararse consigo mismo
+        Event.status != "cancelled",
+        Event.start_time < event.end_time,
+        Event.end_time > event.start_time,
+    )
+    
+    if family_id:
+        # Conflicto en la familia
+        statement = statement.where(Event.family_id == family_id)
+    else:
+        # Conflicto personal
+        statement = statement.where(Event.owner_id == user_id)
+        
+    conflicts = session.exec(statement).all()
+    if conflicts:
+        titles = [c.title for c in conflicts]
+        return f"Choque con: {', '.join(titles)}"
+    return None
 
 
 # =============================================================================
@@ -51,7 +78,14 @@ def create_event(
     session: DBSession,
     user_id: Annotated[int, Depends(get_current_user_id)],
 ):
-    # Validar si se asigna a una familia, que el usuario sea miembro
+    # 1. Validación de fechas
+    if event.start_time >= event.end_time:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La fecha de fin debe ser posterior a la de inicio."
+        )
+
+    # 2. Validar si se asigna a una familia, que el usuario sea miembro
     if event.family_id:
         membership = session.exec(
             select(FamilyMember)
@@ -67,14 +101,27 @@ def create_event(
     event_data = event.model_dump()
     event_data["owner_id"] = user_id
 
-    # Si no se especifica familia, es privado por defecto
+    # 3. Si no se especifica familia, es privado por defecto
     if not event_data.get("family_id"):
         event_data["visibility"] = "private"
 
     db_event = Event.model_validate(event_data)
+    
+    # 3.5 Detección de conflictos inmediata
+    conflict = check_event_conflicts(session, db_event, db_event.family_id, user_id)
+    if conflict:
+        db_event.has_conflict = True
+        db_event.conflict_details = conflict
+    
     session.add(db_event)
     session.commit()
     session.refresh(db_event)
+
+    # 4. Si es recurrente, pre-generar instancias (Horario proactivo)
+    if db_event.is_recurring and db_event.recurrence_pattern:
+        from app.services.notification_scheduler import pre_generate_recurring_instances
+        pre_generate_recurring_instances(session, db_event.id)
+
     return db_event
 
 
@@ -113,7 +160,31 @@ def read_events(
     ).offset(skip).limit(limit)
 
     events = session.exec(statement).all()
-    return events
+    
+    # Privacidad granular: anonimizar eventos 'busy' si no soy el dueño/asignado
+    processed_events = []
+    for ev in events:
+        # Si es mío o estoy asignado, veo todo
+        if ev.owner_id == user_id or ev.assigned_to_id == user_id:
+            processed_events.append(ev)
+            continue
+        
+        # Si es privado
+        if ev.visibility == "private":
+            if ev.visibility_type == "busy":
+                # Clonar para no modificar la DB y anonimizar
+                busy_ev = Event.model_validate(ev.model_dump())
+                busy_ev.title = "Ocupado"
+                busy_ev.description = "Evento privado"
+                processed_events.append(busy_ev)
+            else:
+                # 'invisible': no lo incluimos
+                continue
+        else:
+            # Visibilidad de familia: todos ven todo
+            processed_events.append(ev)
+
+    return processed_events
 
 
 @router.get(
@@ -210,9 +281,24 @@ def update_event(
     for key, value in event_data.items():
         setattr(db_event, key, value)
 
+    # Recalcular conflictos tras la actualización
+    conflict = check_event_conflicts(session, db_event, db_event.family_id, user_id)
+    if conflict:
+        db_event.has_conflict = True
+        db_event.conflict_details = conflict
+    else:
+        db_event.has_conflict = False
+        db_event.conflict_details = None
+
     session.add(db_event)
     session.commit()
     session.refresh(db_event)
+
+    # Si se activó la recurrencia o se cambió el patrón, pre-generar instancias
+    if db_event.is_recurring and db_event.recurrence_pattern:
+        from app.services.notification_scheduler import pre_generate_recurring_instances
+        pre_generate_recurring_instances(session, db_event.id)
+
     return db_event
 
 
@@ -374,9 +460,25 @@ def complete_event(
             detail="No tienes permiso para completar este evento.",
         )
 
-    db_event.status = "completed"
-    db_event.completed_at = datetime.now(timezone.utc)
-    db_event.completed_by_id = (request.completed_by_id if request else None) or user_id
+    if db_event.status != "completed":
+        db_event.status = "completed"
+        db_event.completed_at = datetime.now(timezone.utc)
+        db_event.completed_by_id = (request.completed_by_id if request else None) or user_id
+        
+        # Gamificación: Otorgar puntos
+        user = session.get(User, user_id)
+        if db_event.family_id:
+            family = session.get(Family, db_event.family_id)
+            if user and family:
+                user.points += 10
+                user.level = (user.points // 100) + 1
+                family.total_points += 10
+                session.add(user)
+                session.add(family)
+        elif user:
+            user.points += 10
+            user.level = (user.points // 100) + 1
+            session.add(user)
 
     session.add(db_event)
     session.commit()

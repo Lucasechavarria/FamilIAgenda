@@ -3,7 +3,7 @@ import json
 import firebase_admin
 from firebase_admin import credentials, messaging
 from sqlmodel import Session, select
-from .models import NotificationToken, FamilyMember
+from app.models import NotificationToken, FamilyMember
 
 # Variable para asegurar que Firebase se inicialice solo una vez
 _firebase_app_initialized = False

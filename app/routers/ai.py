@@ -46,10 +46,10 @@ if not AI_PROVIDER and gemini_key:
 if not AI_PROVIDER:
     print("❌ No hay ninguna API de IA configurada. Configura GROQ_API_KEY o GEMINI_API_KEY")
 
-from ..schemas import PromptUsuario
-from ..database import get_session
-from ..security import get_current_user_id
-from ..models import Event, FamilyMember, EventShare
+from app.schemas import PromptUsuario
+from app.database import get_session
+from app.security import get_current_user_id
+from app.models import Event, FamilyMember, EventShare
 
 router = APIRouter()
 
@@ -189,20 +189,53 @@ async def _stream_gemini_tokens(prompt: str) -> AsyncGenerator[str, None]:
     ),
     response_class=StreamingResponse,
 )
-async def interpretar_stream(prompt: PromptUsuario):
+async def interpretar_stream(
+    prompt: PromptUsuario,
+    session: Session = Depends(get_session),
+    user_id: int = Depends(get_current_user_id)
+):
     if not AI_PROVIDER:
         raise HTTPException(
             status_code=503,
             detail="No hay ninguna API de IA configurada. Configura GROQ_API_KEY o GEMINI_API_KEY.",
         )
 
-    ahora = datetime.now().isoformat()
+    # 1. Obtener contexto: eventos de hoy
+    ahora = datetime.now()
+    inicio_hoy = ahora.replace(hour=0, minute=0, second=0, microsecond=0)
+    fin_hoy = inicio_hoy + timedelta(days=1)
+    
+    # Buscar el family_id del usuario
+    member = session.exec(select(FamilyMember).where(FamilyMember.user_id == user_id)).first()
+    family_id = member.family_id if member else user_id
+    
+    events_today = session.exec(
+        select(Event).where(
+            Event.family_id == family_id,
+            Event.start_time >= inicio_hoy,
+            Event.start_time < fin_hoy
+        )
+    ).all()
+    
+    contexto_eventos = "\n".join([
+        f"- ID:{e.id} | {e.title} ({e.start_time.strftime('%H:%M')} - {e.end_time.strftime('%H:%M')})" + 
+        (f" [CONFLICTO: {e.conflict_details}]" if e.has_conflict else "")
+        for e in events_today
+    ])
+
     system_prompt = (
-        f"Actúa como un asistente de calendario experto. La fecha y hora actual es: {ahora}.\n"
-        f'Tu tarea es convertir el texto del usuario en un objeto JSON con los campos '
-        f'"title", "start_time", "end_time", "category", "description".\n'
-        f'Texto del usuario: "{prompt.texto}"\n'
-        f"IMPORTANTE: Devuelve SOLO el JSON, sin ```json ni markdown."
+        f"Eres 'Aura', la IA de FamilIAgenda. Fecha actual: {ahora.isoformat()}.\n"
+        f"EVENTOS DE HOY PARA LA FAMILIA:\n{contexto_eventos if contexto_eventos else 'No hay eventos hoy.'}\n\n"
+        f"Tu tarea es interpretar el mensaje del usuario y decidir la acción correcta.\n"
+        f"RESUELVE CONFLICTOS: Si ves un evento con [CONFLICTO], sugiérele al usuario moverlo a un hueco libre.\n"
+        f"Sé PRECISIVA. Si el usuario dice 'borra el de las 4', usa el ID del evento correspondiente.\n\n"
+        f"ACCIONES POSIBLES:\n"
+        f"1. CREATE: Crear evento o tarea. Retorna JSON: {{'action':'CREATE', 'title':'...', 'start_time':'...', 'end_time':'...', 'category':'...'}}\n"
+        f"2. UPDATE: Modificar. Retorna JSON: {{'action':'UPDATE', 'id':123, 'changes':{{'title':'...'}}}}\n"
+        f"3. DELETE: Borrar. Retorna JSON: {{'action':'DELETE', 'id':123, 'title':'...'}}\n"
+        f"4. QUERY: Preguntar o sugerir resolución de conflictos. Retorna JSON: {{'action':'QUERY', 'answer':'...'}}\n\n"
+        f"Texto del usuario: \"{prompt.texto}\"\n"
+        f"IMPORTANTE: Devuelve SOLO el objeto JSON final."
     )
 
     generator = (
@@ -235,13 +268,41 @@ async def procesar_texto_ia(prompt: PromptUsuario):
     print(f"✅ Usando proveedor: {AI_PROVIDER.upper()}")
 
     try:
-        ahora = datetime.now().isoformat()
-        system_prompt = f"""
-        Actúa como un asistente de calendario experto. La fecha y hora actual es: {ahora}.
-        Tu tarea es convertir el texto del usuario en un objeto JSON estricto con los campos "title", "start_time", "end_time", "category", "description".
-        Texto del usuario: "{prompt.texto}"
-        IMPORTANTE: Devuelve SOLO el JSON, sin ```json ni markdown.
-        """
+        # 1. Obtener contexto: eventos de hoy
+        ahora = datetime.now()
+        inicio_hoy = ahora.replace(hour=0, minute=0, second=0, microsecond=0)
+        fin_hoy = inicio_hoy + timedelta(days=1)
+        
+        # Buscar el family_id del usuario
+        member = session.exec(select(FamilyMember).where(FamilyMember.user_id == user_id)).first()
+        family_id = member.family_id if member else user_id
+        
+        events_today = session.exec(
+            select(Event).where(
+                Event.family_id == family_id,
+                Event.start_time >= inicio_hoy,
+                Event.start_time < fin_hoy
+            )
+        ).all()
+        
+        contexto_eventos = "\n".join([
+            f"- ID:{e.id} | {e.title} ({e.start_time.strftime('%H:%M')} - {e.end_time.strftime('%H:%M')})"
+            for e in events_today
+        ])
+
+        system_prompt = (
+            f"Eres 'Aura', la IA de FamilIAgenda. Fecha actual: {ahora.isoformat()}.\n"
+            f"EVENTOS DE HOY PARA LA FAMILIA:\n{contexto_eventos if contexto_eventos else 'No hay eventos hoy.'}\n\n"
+            f"Tu tarea es interpretar el mensaje del usuario y decidir la acción correcta.\n"
+            f"Sé PRECISIVA. Si el usuario dice 'borra el de las 4', usa el ID del evento correspondiente.\n\n"
+            f"ACCIONES POSIBLES:\n"
+            f"1. CREATE: Crear evento o tarea. Retorna JSON: {{'action':'CREATE', 'title':'...', 'start_time':'...', 'end_time':'...', 'category':'...'}}\n"
+            f"2. UPDATE: Modificar. Retorna JSON: {{'action':'UPDATE', 'id':123, 'changes':{{'title':'...'}}}}\n"
+            f"3. DELETE: Borrar. Retorna JSON: {{'action':'DELETE', 'id':123, 'title':'...'}}\n"
+            f"4. QUERY: Preguntar. Retorna JSON: {{'action':'QUERY', 'answer':'...'}}\n\n"
+            f"Texto del usuario: \"{prompt.texto}\"\n"
+            f"IMPORTANTE: Devuelve SOLO el objeto JSON final."
+        )
         
         print(f"📡 Enviando request a {AI_PROVIDER.upper()}...")
         

@@ -10,11 +10,12 @@ from fastapi import APIRouter, Depends, Query
 from sqlmodel import select
 from datetime import datetime, timedelta
 
-from ..database import get_session
-from ..dependencies import CurrentFamilyId, DBSession
-from ..models import Event, FamilyMember, User
-from ..schemas import MetricsRead, MemberStatRead
-from ..security import get_current_user_id
+from app.database import get_session
+from app.dependencies import CurrentFamilyId, DBSession
+from app.models import Event, FamilyMember, User
+from app.schemas import MetricsRead, MemberStatRead
+from app.security import get_current_user_id
+from app.services.gamification import get_level_name
 
 router = APIRouter()
 
@@ -23,7 +24,7 @@ MetricsRange = Literal["week", "month", "all"]
 
 
 @router.get(
-    "/metrics",
+    "",
     response_model=MetricsRead,
     summary="Obtener métricas del dashboard familiar",
     description=(
@@ -115,6 +116,9 @@ async def get_metrics(
                 assigned_count=assigned_count,
                 completed_count=completed_count,
                 completion_rate=completion_rate,
+                points=member_user.points,
+                level=member_user.level,
+                level_name=get_level_name(member_user.level)
             )
         )
 

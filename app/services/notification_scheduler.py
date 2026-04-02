@@ -5,8 +5,10 @@ Maneja la lógica de notificaciones multi-etapa, recurrentes y asignaciones.
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 import json
-from sqlmodel import Session, select
-from ..models import Event, NotificationLog, User, NotificationToken, Task
+from sqlmodel import Session, select, delete
+from app.models import Event, NotificationLog, User, NotificationToken, Task
+from dateutil import rrule
+from dateutil.parser import parse as parse_date
 
 def parse_notification_config(config_str: str) -> Dict[str, Any]:
     """
@@ -230,41 +232,155 @@ def handle_recurring_event_completion(session: Session, event_id: int):
     # Programar notificaciones para la nueva instancia
     schedule_notifications_for_event(session, new_event.id)
 
-def calculate_next_occurrence(current_start: datetime, pattern: Dict[str, Any]) -> Optional[datetime]:
+def pre_generate_recurring_instances(session: Session, event_id: int, weeks_ahead: int = 4):
     """
-    Calcula la próxima ocurrencia basada en el patrón de recurrencia.
+    Pre-genera instancias futuras de un evento recurrente para que el usuario 
+    pueda ver su horario completo (ej: colegio) de inmediato.
     """
-    freq = pattern.get("frequency")
+    event = session.get(Event, event_id)
+    if not event or not event.is_recurring or not event.recurrence_pattern:
+        return
+
+    # Evitar duplicados: borrar instancias futuras no completadas de este padre
+    now = datetime.now(timezone.utc)
+    session.exec(
+        delete(Event)
+        .where(Event.parent_id == event_id)
+        .where(Event.status == "pending")
+        .where(Event.start_time > now)
+    )
     
-    if freq == "daily":
-        return current_start + timedelta(days=1)
+    # Calcular fechas usando rrule
+    try:
+        # El patrón puede ser RRULE puro o nuestro formato custom
+        rule_str = event.recurrence_pattern
+        if "FREQ=" not in rule_str.upper():
+            # Convertir formato custom a RRULE básico para compatibilidad
+            pattern = parse_recurrence_pattern(rule_str)
+            if pattern.get("frequency") == "daily":
+                rule_str = "FREQ=DAILY"
+            elif pattern.get("frequency") == "weekly":
+                days = ",".join([d[:2].upper() for d in pattern.get("days", [])])
+                rule_str = f"FREQ=WEEKLY;BYDAY={days}"
+
+        rule = rrule.rrulestr(rule_str, dtstart=event.start_time)
+        
+        # Ventana de pre-generación:
+        # Si el RRULE tiene UNTIL, usamos esa fecha.
+        # Si no, usamos 6 meses (26 semanas) por defecto para soportar ciclos escolares/largos.
+        if "UNTIL=" in rule_str.upper():
+            # Extraer fecha UNTIL si es posible, o dejar que rule.between maneje el límite
+            # Por seguridad limitamos a 1 año máximo de pre-generación.
+            until_limit = now + timedelta(weeks=52)
+        else:
+            until_limit = now + timedelta(weeks=26)
+            
+        occurrences = rule.between(event.start_time, until_limit, inc=False)
+        
+        duration = event.end_time - event.start_time
+        
+        for occ in occurrences:
+            # Asegurar timezone
+            occ = occ.replace(tzinfo=timezone.utc)
+            
+            new_instance = Event(
+                title=event.title,
+                description=event.description,
+                start_time=occ,
+                end_time=occ + duration,
+                category=event.category,
+                priority=event.priority,
+                visibility=event.visibility,
+                visibility_type=event.visibility_type,
+                is_recurring=True,
+                recurrence_pattern=event.recurrence_pattern,
+                notification_config=event.notification_config,
+                assigned_to_id=event.assigned_to_id,
+                owner_id=event.owner_id,
+                family_id=event.family_id,
+                parent_id=event_id
+            )
+            session.add(new_instance)
+            
+        session.commit()
+        # Nota: schedule_notifications_for_event se llamará bajo demanda o en batch
+        
+    except Exception as e:
+        print(f"Error pre-generando eventos: {e}")
+
+def pre_generate_recurring_tasks(session: Session, task_id: int, weeks_ahead: int = 4):
+    """
+    Pre-genera instancias futuras de una tarea recurrente.
+    """
+    task = session.get(Task, task_id)
+    if not task or not task.is_recurring or not task.recurrence_pattern:
+        return
+
+    # Borrar futuras pendientes para evitar duplicados
+    now = datetime.now(timezone.utc)
+    session.exec(
+        delete(Task)
+        .where(Task.parent_id == task_id)
+        .where(Task.status == "pending")
+        .where(Task.due_date > now)
+    )
     
-    elif freq == "weekly":
-        days_map = {
-            "mon": 0, "tue": 1, "wed": 2, "thu": 3,
-            "fri": 4, "sat": 5, "sun": 6
-        }
-        target_days = [days_map.get(d.lower(), 0) for d in pattern.get("days", [])]
+    try:
+        rule_str = task.recurrence_pattern
+        rule = rrule.rrulestr(rule_str, dtstart=task.due_date)
         
-        if not target_days:
-            return None
+        if "UNTIL=" in rule_str.upper():
+            until_limit = now + timedelta(weeks=52)
+        else:
+            until_limit = now + timedelta(weeks=26)
+            
+        occurrences = rule.between(task.due_date, until_limit, inc=False)
         
-        # Encontrar el próximo día válido
-        current_weekday = current_start.weekday()
-        next_day = None
-        
-        for offset in range(1, 8):
-            check_day = (current_weekday + offset) % 7
-            if check_day in target_days:
-                next_day = current_start + timedelta(days=offset)
-                break
-        
-        if next_day and "time" in pattern:
-            hour, minute = map(int, pattern["time"].split(":"))
-            next_day = next_day.replace(hour=hour, minute=minute, second=0)
-        
-        return next_day
-    
+        for occ in occurrences:
+            occ = occ.replace(tzinfo=timezone.utc)
+            new_instance = Task(
+                title=task.title,
+                description=task.description,
+                due_date=occ,
+                priority=task.priority,
+                status="pending",
+                category=task.category,
+                assigned_to_id=task.assigned_to_id,
+                family_id=task.family_id,
+                created_by_id=task.created_by_id,
+                is_recurring=True,
+                recurrence_pattern=task.recurrence_pattern,
+                parent_id=task_id,
+                notification_config=task.notification_config
+            )
+            session.add(new_instance)
+        session.commit()
+    except Exception as e:
+        print(f"Error pre-generando tareas: {e}")
+
+def calculate_next_occurrence(current_start: datetime, pattern_str: str) -> Optional[datetime]:
+    """
+    Calcula la próxima ocurrencia usando dateutil.rrule.
+    """
+    try:
+        if "FREQ=" in pattern_str.upper():
+            rule = rrule.rrulestr(pattern_str, dtstart=current_start)
+            return rule.after(current_start)
+        else:
+            # Fallback legacy
+            pattern = parse_recurrence_pattern(pattern_str)
+            freq = pattern.get("frequency")
+            if freq == "daily":
+                return current_start + timedelta(days=1)
+            elif freq == "weekly":
+                # Lógica simplificada
+                days_map = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
+                target_days = [days_map.get(d.lower(), 0) for d in pattern.get("days", [])]
+                for offset in range(1, 8):
+                    if (current_start.weekday() + offset) % 7 in target_days:
+                        return current_start + timedelta(days=offset)
+    except:
+        return None
     return None
 
 def send_notification_to_user(session: Session, user_id: int, title: str, body: str):
@@ -297,3 +413,54 @@ def send_notification_to_user(session: Session, user_id: int, title: str, body: 
         print(f"Notificaciones enviadas a usuario {user_id}: {response.success_count}/{len(registration_tokens)}")
     except Exception as e:
         print(f"Error enviando notificación a usuario {user_id}: {e}")
+
+def notify_missed_tasks(session: Session):
+    """
+    Busca tareas que han vencido (pending y due_date < now) y envía notificación al asignado.
+    Evita enviar duplicados usando un flag o registro.
+    """
+    now = datetime.now(timezone.utc)
+    # Tareas vencidas hace menos de 1 hora (para no inundar si se corre frecuentemente)
+    missed = session.exec(
+        select(Task).where(
+            Task.status == "pending",
+            Task.due_date < now,
+            Task.due_date > now - timedelta(hours=1)
+        )
+    ).all()
+    
+    for task in missed:
+        user_id = task.assigned_to_id or task.created_by_id
+        if user_id:
+            title = f"Tarea pendiente: {task.title}"
+            body = f"La tarea '{task.title}' venció a las {task.due_date.strftime('%H:%M')}. ¡No olvides completarla!"
+            send_notification_to_user(session, user_id, title, body)
+
+def send_daily_missed_tasks_summary(session: Session):
+    """
+    Envía un resumen diario (ej: 8:00 PM) de todas las tareas pendientes del día.
+    """
+    now = datetime.now(timezone.utc)
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Obtener todas las tareas pendientes hoy
+    missed = session.exec(
+        select(Task).where(
+            Task.status == "pending",
+            Task.due_date < now,
+            Task.due_date >= start_of_day
+        )
+    ).all()
+    
+    # Agrupar por usuario
+    user_tasks: dict[int, list[str]] = {}
+    for task in missed:
+        uid = task.assigned_to_id or task.created_by_id
+        if uid:
+            if uid not in user_tasks: user_tasks[uid] = []
+            user_tasks[uid].append(task.title)
+        
+    for user_id, titles in user_tasks.items():
+        title = "Resumen de tareas no realizadas"
+        body = f"Tienes {len(titles)} tareas pendientes de hoy: {', '.join(titles[:3])}{'...' if len(titles) > 3 else ''}"
+        send_notification_to_user(session, user_id, title, body)

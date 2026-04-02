@@ -8,9 +8,9 @@ from googleapiclient.discovery import build
 from datetime import datetime, timezone
 import json
 
-from ..database import get_session
-from ..security import get_current_user_id
-from ..models import User, Event
+from app.database import get_session
+from app.security import get_current_user_id
+from app.models import User, Event
 
 router = APIRouter()
 
@@ -64,7 +64,7 @@ async def google_auth_callback(request: Request, session: Session = Depends(get_
     credentials = flow.credentials
     
     # 1. Guardar o actualizar la integración del usuario
-    from ..models import UserIntegration
+    from app.models import UserIntegration
     
     # Convertir scopes a JSON string
     scopes_str = json.dumps(credentials.scopes)
@@ -101,7 +101,7 @@ async def google_auth_callback(request: Request, session: Session = Depends(get_
 
 def get_google_credentials(user_id: int, session: Session):
     """Recupera y refresca las credenciales de Google para un usuario"""
-    from ..models import UserIntegration
+    from app.models import UserIntegration
     
     statement = select(UserIntegration).where(
         UserIntegration.user_id == user_id, 
@@ -160,7 +160,7 @@ def sync_google_calendar(
         google_events = events_result.get('items', [])
         
         imported_count = 0
-        from ..models import Event
+        from app.models import Event
         
         for g_event in google_events:
             # Evitar duplicados por título y fecha (lógica simple)

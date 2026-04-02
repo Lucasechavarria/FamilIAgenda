@@ -83,3 +83,13 @@ serviceAccountKey.json
 # Migration scripts (already executed in production)
 *_migration.sql
 migrations/
+
+# Diagnostic Logs (AI Agents)
+*_log.txt
+*_output.txt
+test_results.log
+compile_error.log
+test_chat_output.txt
+test_events_output.txt
+tests_output.txt
+push_log*.txt

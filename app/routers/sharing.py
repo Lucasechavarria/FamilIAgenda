@@ -2,10 +2,10 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
-from ..database import get_session
-from ..models import Event, EventShare, FamilyMember
-from ..schemas import EventShareCreate, EventShareRead
-from ..security import get_current_user_id
+from app.database import get_session
+from app.models import Event, EventShare, FamilyMember
+from app.schemas import EventShareCreate, EventShareRead
+from app.security import get_current_user_id
 
 router = APIRouter()
 

@@ -60,6 +60,8 @@ class Token(BaseModel):
     user_name: Annotated[str, Field(description="Nombre completo del usuario autenticado.")]
     user_email: Annotated[str, Field(description="Email del usuario autenticado.")]
     family_id: Annotated[Optional[int], Field(default=None, description="ID de la familia del usuario.")]
+    points: Annotated[int, Field(default=0, description="Puntos totales del usuario.")]
+    level: Annotated[int, Field(default=1, description="Nivel actual del usuario.")]
 
 
 # =============================================================================
@@ -73,6 +75,10 @@ class UserRead(BaseModel):
     email: str
     full_name: str
     avatar_url: Optional[str] = None
+    points: int = 0
+    level: int = 1
+    level_name: str = "Aprendiz del Orden"
+    theme: str = "space"
     color: Annotated[
         str,
         Field(
@@ -99,6 +105,8 @@ class UserUpdate(BaseModel):
             description="Color hexadecimal en formato #RRGGBB.",
         ),
     ]
+    theme: Optional[str] = None
+    kanban_layout: Optional[str] = None
 
 
 class FamilyMemberRead(BaseModel):
@@ -109,6 +117,9 @@ class FamilyMemberRead(BaseModel):
     email: str
     avatar_url: Optional[str] = None
     color: str
+    points: int = 0
+    level: int = 1
+    level_name: str = "Aprendiz del Orden"
 
 
 # =============================================================================
@@ -179,6 +190,10 @@ class EventBase(BaseModel):
         EventVisibility,
         Field(default="family", description="Visibilidad del evento."),
     ]
+    visibility_type: Annotated[
+        Literal["invisible", "busy"],
+        Field(default="invisible", description="Cómo se muestra si es privado (invisible o ocupado)."),
+    ]
     is_recurring: Annotated[
         bool,
         Field(default=False, description="Indica si el evento se repite periódicamente."),
@@ -197,6 +212,10 @@ class EventBase(BaseModel):
     family_id: Annotated[
         Optional[int],
         Field(default=None, description="ID de la familia propietaria del evento."),
+    ]
+    parent_id: Annotated[
+        Optional[int],
+        Field(default=None, description="ID del evento padre en una serie recurrente."),
     ]
 
 
@@ -290,6 +309,10 @@ class TaskBase(BaseModel):
         Optional[str],
         Field(default=None, max_length=2000, description="Descripción detallada de la tarea."),
     ]
+    category: Annotated[
+        str,
+        Field(default="tasks", description="Categoría de la tarea."),
+    ]
     due_date: Annotated[
         Optional[datetime],
         Field(default=None, description="Fecha límite de la tarea (UTC)."),
@@ -308,6 +331,18 @@ class TaskBase(BaseModel):
             default='{"pre": [15], "unit": "minutes"}',
             description='JSON string con la configuración de notificaciones.',
         ),
+    ]
+    is_recurring: Annotated[
+        bool,
+        Field(default=False, description="Indica si la tarea se repite."),
+    ]
+    recurrence_pattern: Annotated[
+        Optional[str],
+        Field(default=None, description="Patrón de recurrencia RFC 5545."),
+    ]
+    parent_id: Annotated[
+        Optional[int],
+        Field(default=None, description="ID de la tarea padre en una serie recurrente."),
     ]
 
 
@@ -338,7 +373,11 @@ class TaskUpdate(BaseModel):
     due_date: Optional[datetime] = None
     assigned_to_id: Optional[int] = None
     priority: Optional[TaskPriority] = None
+    category: Optional[str] = None
     status: Optional[TaskStatus] = None
+    is_recurring: Optional[bool] = None
+    recurrence_pattern: Optional[str] = None
+    parent_id: Optional[int] = None
     notification_config: Optional[str] = None
 
 
@@ -427,6 +466,9 @@ class MemberStatRead(BaseModel):
         float,
         Field(ge=0.0, le=100.0, description="Porcentaje de completitud (0-100)."),
     ]
+    points: Annotated[int, Field(default=0, description="Puntos acumulados por el miembro.")]
+    level: Annotated[int, Field(default=1, description="Nivel del miembro.")]
+    level_name: Annotated[str, Field(default="Aprendiz del Orden", description="Título divertido del nivel.")]
 
 
 class MetricsRead(BaseModel):

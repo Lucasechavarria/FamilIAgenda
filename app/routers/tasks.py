@@ -10,12 +10,12 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 
-from ..database import get_session
-from ..dependencies import CurrentFamilyId, DBSession
-from ..models import Task, FamilyMember
-from ..schemas import TaskCreate, TaskRead, TaskUpdate
-from ..security import get_current_user_id
-from datetime import datetime, timezone
+from app.database import get_session
+from app.dependencies import CurrentFamilyId, DBSession
+from app.models import Task, FamilyMember, User, Family
+from app.schemas import TaskCreate, TaskRead, TaskUpdate
+from app.security import get_current_user_id
+from datetime import datetime, timezone, timedelta
 
 router = APIRouter()
 
@@ -65,6 +65,12 @@ def create_task(
     session.add(db_task)
     session.commit()
     session.refresh(db_task)
+
+    # Si es recurrente, pre-generar instancias (para Kanban)
+    if db_task.is_recurring and db_task.recurrence_pattern:
+        from app.services.notification_scheduler import pre_generate_recurring_tasks
+        pre_generate_recurring_tasks(session, db_task.id)
+
     return db_task
 
 
@@ -89,11 +95,21 @@ def read_tasks(
             description="Filtrar por estado: `pending`, `in_progress`, `completed`, `cancelled`.",
         ),
     ] = None,
+    date: Annotated[
+        Optional[datetime],
+        Query(description="Filtrar por fecha específica (YYYY-MM-DD)."),
+    ] = None,
 ):
     query = select(Task).where(Task.family_id == family_id)
 
     if task_status:
         query = query.where(Task.status == task_status)
+
+    if date:
+        # Filtrar tareas del día (desde 00:00 hasta 23:59)
+        day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        query = query.where(Task.due_date >= day_start, Task.due_date < day_end)
 
     # Ordenar por fecha de vencimiento (nulos al final)
     query = query.order_by(Task.due_date)
@@ -144,7 +160,18 @@ def update_task(
     if not db_task or db_task.family_id != family_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarea no encontrada.")
 
-    task_data = task_update.model_dump(exclude_unset=True)
+    # Lógica de Gamificación si cambia a completado
+    if task_data.get("status") == "completed" and db_task.status != "completed":
+        from app.security import get_current_user_id
+        user = session.get(User, user_id)
+        family = session.get(Family, family_id)
+        if user and family:
+            user.points += 10
+            user.level = (user.points // 100) + 1
+            family.total_points += 10
+            session.add(user)
+            session.add(family)
+
     for key, value in task_data.items():
         setattr(db_task, key, value)
 
@@ -174,9 +201,20 @@ def complete_task(
     if not db_task or db_task.family_id != family_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarea no encontrada.")
 
-    db_task.status = "completed"
-    db_task.completed_at = datetime.now(timezone.utc)
-    db_task.completed_by_id = user_id
+    if db_task.status != "completed":
+        db_task.status = "completed"
+        db_task.completed_at = datetime.now(timezone.utc)
+        db_task.completed_by_id = user_id
+        
+        # Gamificación
+        user = session.get(User, user_id)
+        family = session.get(Family, family_id)
+        if user and family:
+            user.points += 10
+            user.level = (user.points // 100) + 1
+            family.total_points += 10
+            session.add(user)
+            session.add(family)
 
     session.add(db_task)
     session.commit()

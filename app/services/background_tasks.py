@@ -2,9 +2,9 @@ import asyncio
 import json
 from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
-from ..database import engine
-from ..models import Task
-from .websocket_manager import manager
+from app.database import engine
+from app.models import Task
+from app.services.websocket_manager import manager
 
 async def check_upcoming_tasks():
     """

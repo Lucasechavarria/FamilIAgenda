@@ -21,7 +21,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const currentUser = authService.getCurrentUser();
         setUser(currentUser);
         setIsLoading(false);
+        
+        // Aplicar tema si existe
+        if (currentUser?.theme) {
+            document.documentElement.setAttribute('data-theme', currentUser.theme);
+        } else {
+            document.documentElement.setAttribute('data-theme', 'space');
+        }
     }, []);
+
+    useEffect(() => {
+        if (user?.theme) {
+            document.documentElement.setAttribute('data-theme', user.theme);
+        }
+    }, [user?.theme]);
 
     const login = async (data: LoginData) => {
         await authService.login(data);
