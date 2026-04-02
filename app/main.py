@@ -228,7 +228,7 @@ async def root():
 app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(ai.router, prefix="/api/ai", tags=["Inteligencia Artificial"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notificaciones"])
-app.include_router(metrics.router, prefix="/api/metrics", tags=["Métricas"])
+app.include_router(metrics.router, prefix="/api/events/metrics", tags=["Métricas"])
 app.include_router(events.router, prefix="/api/events", tags=["Eventos"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Tareas"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])

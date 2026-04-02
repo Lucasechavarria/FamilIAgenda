@@ -24,7 +24,7 @@ MetricsRange = Literal["week", "month", "all"]
 
 
 @router.get(
-    "/",
+    "",
     response_model=MetricsRead,
     summary="Obtener métricas del dashboard familiar",
     description=(
